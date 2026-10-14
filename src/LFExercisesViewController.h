@@ -11,6 +11,6 @@
 }
 @property (nonatomic, assign) id<LFExercisePicker> picker;
 @end
-@interface LFExerciseDetailViewController : UITableViewController <UIScrollViewDelegate> { NSDictionary *exercise; UIScrollView *pager; UIPageControl *dots; NSTimer *flip; NSArray *steps, *facts; NSDictionary *best; }
+@interface LFExerciseDetailViewController : UITableViewController { NSDictionary *exercise; UIImageView *frame; NSArray *steps, *facts; NSDictionary *best; }
 - (id)initWithExercise:(NSDictionary *)e;
 @end

@@ -70,27 +70,25 @@
     }
     return self;
 }
-- (void)dealloc { [flip invalidate]; [flip release]; [exercise release]; [pager release]; [dots release]; [steps release]; [facts release]; [best release]; [super dealloc]; }
+- (void)dealloc { [exercise release]; [frame release]; [steps release]; [facts release]; [best release]; [super dealloc]; }
 - (void)viewDidLoad {
     [super viewDidLoad];
-    // photo card: white, rounded, 1px frame and a soft shadow, holding a paging strip of the two frames
+    // photo card: white, rounded, 1px frame and a soft shadow; the two frames play like a GIF
     CGFloat w = self.tableView.bounds.size.width, cardW = w - 20, imgH = floorf((cardW - 2) * 567.0 / 850.0);
-    UIView *hdr = [[[UIView alloc] initWithFrame:CGRectMake(0, 0, w, imgH + 2 + 22 + 16)] autorelease];
-    UIView *card = [[[UIView alloc] initWithFrame:CGRectMake(10, 10, cardW, imgH + 2 + 22)] autorelease];
+    UIView *hdr = [[[UIView alloc] initWithFrame:CGRectMake(0, 0, w, imgH + 2 + 16)] autorelease];
+    UIView *card = [[[UIView alloc] initWithFrame:CGRectMake(10, 10, cardW, imgH + 2)] autorelease];
     card.backgroundColor = [UIColor whiteColor]; card.layer.cornerRadius = 8; card.layer.borderWidth = 1; card.layer.borderColor = [UIColor colorWithWhite:0.72 alpha:1].CGColor;
     card.layer.shadowColor = [UIColor blackColor].CGColor; card.layer.shadowOpacity = 0.18; card.layer.shadowOffset = CGSizeMake(0, 1); card.layer.shadowRadius = 2;
     UIView *clip = [[[UIView alloc] initWithFrame:CGRectMake(1, 1, cardW - 2, imgH)] autorelease]; clip.clipsToBounds = YES; clip.layer.cornerRadius = 7; [card addSubview:clip];
-    pager = [[UIScrollView alloc] initWithFrame:clip.bounds]; pager.pagingEnabled = YES; pager.showsHorizontalScrollIndicator = NO; pager.delegate = self; pager.backgroundColor = [UIColor colorWithWhite:0.1 alpha:1];
-    int n = 0; for (int i = 0; i < 2; i++) { NSString *p = [LFStore imagePath:[exercise objectForKey:@"id"] frame:i]; if (!p) break;
-        UIImageView *iv = [[[UIImageView alloc] initWithFrame:CGRectMake(i * (cardW - 2), 0, cardW - 2, imgH)] autorelease]; iv.contentMode = UIViewContentModeScaleAspectFit; iv.image = [UIImage imageWithContentsOfFile:p]; [pager addSubview:iv]; n++; }
-    pager.contentSize = CGSizeMake((cardW - 2) * MAX(n, 1), imgH); [clip addSubview:pager];
-    dots = [[UIPageControl alloc] initWithFrame:CGRectMake(0, imgH + 2, cardW, 22)]; dots.numberOfPages = n; dots.hidesForSinglePage = YES; dots.userInteractionEnabled = NO; dots.backgroundColor = [UIColor colorWithWhite:0.55 alpha:1]; dots.layer.cornerRadius = 7; [card addSubview:dots];   // grey strip so the white dots show
-    [hdr addSubview:card]; self.tableView.tableHeaderView = hdr;
+    frame = [[UIImageView alloc] initWithFrame:clip.bounds]; frame.contentMode = UIViewContentModeScaleAspectFit; frame.backgroundColor = [UIColor colorWithWhite:0.1 alpha:1];
+    NSMutableArray *imgs = [NSMutableArray array];
+    for (int i = 0; i < 2; i++) { NSString *p = [LFStore imagePath:[exercise objectForKey:@"id"] frame:i]; UIImage *im = p ? [UIImage imageWithContentsOfFile:p] : nil; if (im) [imgs addObject:im]; }
+    if ([imgs count]) frame.image = [imgs objectAtIndex:0];
+    if ([imgs count] > 1) { frame.animationImages = imgs; frame.animationDuration = 2.4; frame.animationRepeatCount = 0; }
+    [clip addSubview:frame]; [hdr addSubview:card]; self.tableView.tableHeaderView = hdr;
 }
-- (void)viewWillAppear:(BOOL)a { [super viewWillAppear:a]; if (dots.numberOfPages > 1) flip = [[NSTimer scheduledTimerWithTimeInterval:1.6 target:self selector:@selector(flipFrame) userInfo:nil repeats:YES] retain]; }
-- (void)viewWillDisappear:(BOOL)a { [flip invalidate]; [flip release]; flip = nil; [super viewWillDisappear:a]; }
-- (void)flipFrame { if (pager.dragging || pager.decelerating) return; NSInteger next = (dots.currentPage + 1) % MAX(1, dots.numberOfPages); [pager setContentOffset:CGPointMake(next * pager.bounds.size.width, 0) animated:YES]; dots.currentPage = next; }
-- (void)scrollViewDidEndDecelerating:(UIScrollView *)sv { dots.currentPage = (NSInteger)(sv.contentOffset.x / sv.bounds.size.width + 0.5); }
+- (void)viewWillAppear:(BOOL)a { [super viewWillAppear:a]; if (frame.animationImages) [frame startAnimating]; }
+- (void)viewWillDisappear:(BOOL)a { [frame stopAnimating]; [super viewWillDisappear:a]; }
 - (NSInteger)numberOfSectionsInTableView:(UITableView *)tv { return 2 + (best ? 1 : 0); }
 - (NSInteger)stepsSection { return best ? 2 : 1; }
 - (NSInteger)tableView:(UITableView *)tv numberOfRowsInSection:(NSInteger)s { if (s == 0) return [facts count]; if (best && s == 1) return 1; return MAX(1, (NSInteger)[steps count]); }
