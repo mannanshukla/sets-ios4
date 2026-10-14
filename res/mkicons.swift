@@ -10,7 +10,7 @@ func dumbbell(_ s: CGFloat, _ color: NSColor) {
 func icon(_ size: Int, _ path: String) {
     let rep = bitmap(size, size); NSGraphicsContext.saveGraphicsState(); NSGraphicsContext.current = NSGraphicsContext(bitmapImageRep: rep)
     let s = CGFloat(size)
-    NSGradient(starting: NSColor(deviceRed: 0.40, green: 0.43, blue: 0.48, alpha: 1), ending: NSColor(deviceRed: 0.22, green: 0.25, blue: 0.29, alpha: 1))!.draw(in: NSRect(x: 0, y: 0, width: s, height: s), angle: -90)
+    NSGradient(starting: NSColor(deviceRed: 0.49, green: 0.36, blue: 0.78, alpha: 1), ending: NSColor(deviceRed: 0.33, green: 0.21, blue: 0.60, alpha: 1))!.draw(in: NSRect(x: 0, y: 0, width: s, height: s), angle: -90)
     let sh = NSShadow(); sh.shadowOffset = NSSize(width: 0, height: -s*0.02); sh.shadowBlurRadius = s*0.03; sh.shadowColor = NSColor(white: 0, alpha: 0.35); sh.set()
     dumbbell(s, NSColor.white)
     NSGraphicsContext.restoreGraphicsState(); save(rep, path)

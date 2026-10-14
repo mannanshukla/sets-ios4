@@ -231,7 +231,7 @@ static double weightStep(void) { return [LFStore useKg] ? 1.0 : 2.5; }
 }
 - (UITableViewCell *)tableView:(UITableView *)tv cellForRowAtIndexPath:(NSIndexPath *)ip {
     UITableViewCell *c = [[[UITableViewCell alloc] initWithStyle:UITableViewCellStyleSubtitle reuseIdentifier:nil] autorelease];
-    UIColor *olive = [UIColor colorWithRed:0x4D/255.0 green:0x7C/255.0 blue:0x0F/255.0 alpha:1];
+    UIColor *olive = [UIColor colorWithRed:0x5B/255.0 green:0x3F/255.0 blue:0xA6/255.0 alpha:1];
     if (!active) {
         if (ip.section == 0) { c.textLabel.text = @"Start Empty Workout"; c.textLabel.textAlignment = UITextAlignmentCenter; c.textLabel.textColor = olive; c.textLabel.font = [UIFont boldSystemFontOfSize:17]; }
         else { NSDictionary *r = [routines objectAtIndex:ip.row]; c.textLabel.text = [r objectForKey:@"name"]; c.detailTextLabel.text = [NSString stringWithFormat:@"%lu exercises", (unsigned long)[[r objectForKey:@"exercises"] count]]; c.accessoryType = UITableViewCellAccessoryDisclosureIndicator; }

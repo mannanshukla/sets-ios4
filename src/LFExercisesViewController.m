@@ -20,7 +20,7 @@
     [super viewDidLoad];
     self.tableView.rowHeight = 56;
     search = [[UISearchBar alloc] initWithFrame:CGRectMake(0, 0, self.tableView.bounds.size.width, 44)];
-    search.delegate = self; search.placeholder = @"Search exercises"; search.tintColor = [UIColor colorWithRed:0x4D/255.0 green:0x7C/255.0 blue:0x0F/255.0 alpha:1];
+    search.delegate = self; search.placeholder = @"Search exercises"; search.tintColor = [UIColor colorWithRed:0x5B/255.0 green:0x3F/255.0 blue:0xA6/255.0 alpha:1];
     self.tableView.tableHeaderView = search;
     if (picker) self.navigationItem.leftBarButtonItem = [[[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemCancel target:self action:@selector(cancel)] autorelease];
 }

@@ -97,7 +97,7 @@ static NSArray *repsPresets(void) { static NSArray *r = nil; if (!r) r = [[NSArr
 - (UITableViewCell *)tableView:(UITableView *)tv cellForRowAtIndexPath:(NSIndexPath *)ip {
     UITableViewCell *c = [[[UITableViewCell alloc] initWithStyle:UITableViewCellStyleSubtitle reuseIdentifier:nil] autorelease];
     if (ip.section == 0) { c.selectionStyle = UITableViewCellSelectionStyleNone; nameField.frame = CGRectMake(10, 7, c.contentView.bounds.size.width - 20, 30); nameField.autoresizingMask = UIViewAutoresizingFlexibleWidth; [c.contentView addSubview:nameField]; return c; }
-    if (ip.section == 2) { c.textLabel.text = @"Start Workout"; c.textLabel.textAlignment = UITextAlignmentCenter; c.textLabel.textColor = [UIColor colorWithRed:0x4D/255.0 green:0x7C/255.0 blue:0x0F/255.0 alpha:1]; c.textLabel.font = [UIFont boldSystemFontOfSize:17]; return c; }
+    if (ip.section == 2) { c.textLabel.text = @"Start Workout"; c.textLabel.textAlignment = UITextAlignmentCenter; c.textLabel.textColor = [UIColor colorWithRed:0x5B/255.0 green:0x3F/255.0 blue:0xA6/255.0 alpha:1]; c.textLabel.font = [UIFont boldSystemFontOfSize:17]; return c; }
     if (ip.row == [exercises count]) { c.textLabel.text = @"Add Exercise..."; c.textLabel.textColor = [UIColor colorWithRed:0.22 green:0.33 blue:0.53 alpha:1]; return c; }
     NSDictionary *x = [exercises objectAtIndex:ip.row]; NSDictionary *e = [LFStore exercise:[x objectForKey:@"id"]];
     c.selectionStyle = UITableViewCellSelectionStyleNone;
@@ -168,7 +168,7 @@ static NSArray *repsPresets(void) { static NSArray *r = nil; if (!r) r = [[NSArr
 @implementation LFGenerateViewController
 - (id)init { if ((self = [super initWithStyle:UITableViewStyleGrouped])) { self.title = @"Generate"; } return self; }
 - (void)dealloc { [goal release]; [level release]; [equipment release]; [days release]; [minutes release]; [daysLabel release]; [minutesLabel release]; [status release]; [super dealloc]; }
-- (UISegmentedControl *)seg:(NSArray *)items sel:(NSInteger)i { UISegmentedControl *s = [[UISegmentedControl alloc] initWithItems:items]; s.segmentedControlStyle = UISegmentedControlStyleBar; s.selectedSegmentIndex = i; s.tintColor = [UIColor colorWithRed:0x4D/255.0 green:0x7C/255.0 blue:0x0F/255.0 alpha:1]; return s; }
+- (UISegmentedControl *)seg:(NSArray *)items sel:(NSInteger)i { UISegmentedControl *s = [[UISegmentedControl alloc] initWithItems:items]; s.segmentedControlStyle = UISegmentedControlStyleBar; s.selectedSegmentIndex = i; s.tintColor = [UIColor colorWithRed:0x5B/255.0 green:0x3F/255.0 blue:0xA6/255.0 alpha:1]; return s; }
 - (void)viewDidLoad {
     [super viewDidLoad];
     goal = [self seg:[NSArray arrayWithObjects:@"Strength", @"Muscle", @"General", nil] sel:1];
@@ -191,7 +191,7 @@ static NSArray *repsPresets(void) { static NSArray *r = nil; if (!r) r = [[NSArr
     CGFloat w = c.contentView.bounds.size.width;
     if (ip.section <= 2) { UISegmentedControl *s = ip.section == 0 ? goal : ip.section == 1 ? level : equipment; s.frame = CGRectMake(8, 7, w - 16, 30); s.autoresizingMask = UIViewAutoresizingFlexibleWidth; [c.contentView addSubview:s]; }
     else if (ip.section <= 4) { UISlider *sl = ip.section == 3 ? days : minutes; UILabel *l = ip.section == 3 ? daysLabel : minutesLabel; sl.frame = CGRectMake(8, 7, w - 70, 30); sl.autoresizingMask = UIViewAutoresizingFlexibleWidth; l.frame = CGRectMake(w - 56, 7, 46, 30); l.autoresizingMask = UIViewAutoresizingFlexibleLeftMargin; [c.contentView addSubview:sl]; [c.contentView addSubview:l]; }
-    else { c.selectionStyle = UITableViewCellSelectionStyleBlue; c.textLabel.text = busy ? @"Writing your routines..." : @"Generate Routines"; c.textLabel.textAlignment = UITextAlignmentCenter; c.textLabel.textColor = [UIColor colorWithRed:0x4D/255.0 green:0x7C/255.0 blue:0x0F/255.0 alpha:1]; c.textLabel.font = [UIFont boldSystemFontOfSize:17]; }
+    else { c.selectionStyle = UITableViewCellSelectionStyleBlue; c.textLabel.text = busy ? @"Writing your routines..." : @"Generate Routines"; c.textLabel.textAlignment = UITextAlignmentCenter; c.textLabel.textColor = [UIColor colorWithRed:0x5B/255.0 green:0x3F/255.0 blue:0xA6/255.0 alpha:1]; c.textLabel.font = [UIFont boldSystemFontOfSize:17]; }
     return c;
 }
 - (void)tableView:(UITableView *)tv didSelectRowAtIndexPath:(NSIndexPath *)ip {

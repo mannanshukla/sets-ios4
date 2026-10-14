@@ -3,7 +3,7 @@
 #import <QuartzCore/QuartzCore.h>
 
 static NSString *unitS(void) { return [LFStore useKg] ? @"kg" : @"lb"; }
-static UIColor *green(void) { return [UIColor colorWithRed:0x4D/255.0 green:0x7C/255.0 blue:0x0F/255.0 alpha:1]; }
+static UIColor *green(void) { return [UIColor colorWithRed:0x5B/255.0 green:0x3F/255.0 blue:0xA6/255.0 alpha:1]; }
 static NSString *fmtNum(double v) {
     if (fabs(v) >= 100000) return [NSString stringWithFormat:@"%.0fk", v / 1000];
     if (fabs(v) >= 10000) return [NSString stringWithFormat:@"%.1fk", v / 1000];
