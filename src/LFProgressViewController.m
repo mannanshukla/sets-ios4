@@ -64,7 +64,7 @@ static NSString *fmtSigned(double d) { return d == 0 ? @"±0" : [NSString string
             double v = [[ys objectAtIndex:i] doubleValue];
             CGFloat x = floorf(px(i) - bw / 2), top = py(i);
             if (v <= 0) { [[UIColor colorWithWhite:0.85 alpha:1] set]; CGContextFillRect(c, CGRectMake(x, CGRectGetMaxY(plot) - 2, bw, 2)); continue; }
-            [(i == n - 1 ? green() : [UIColor colorWithRed:0x8A/255.0 green:0xB8/255.0 blue:0x3A/255.0 alpha:1]) set];
+            [(i == n - 1 ? green() : [UIColor colorWithRed:0xA9/255.0 green:0x98/255.0 blue:0xD6/255.0 alpha:1]) set];
             CGContextFillRect(c, CGRectMake(x, top, bw, CGRectGetMaxY(plot) - top));
         }
     } else {
