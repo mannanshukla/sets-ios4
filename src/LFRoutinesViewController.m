@@ -103,10 +103,13 @@ static NSArray *repsPresets(void) { static NSArray *r = nil; if (!r) r = [[NSArr
     NSDictionary *x = [exercises objectAtIndex:ip.row]; NSDictionary *e = [LFStore exercise:[x objectForKey:@"id"]];
     c.selectionStyle = UITableViewCellSelectionStyleNone;
     c.textLabel.text = [e objectForKey:@"name"] ?: [x objectForKey:@"id"]; c.textLabel.font = [UIFont boldSystemFontOfSize:15];
-    c.detailTextLabel.text = @"tap to change"; c.detailTextLabel.font = [UIFont systemFontOfSize:11]; c.detailTextLabel.textColor = [UIColor colorWithWhite:0.5 alpha:1];
-    UIButton *b = [UIButton buttonWithType:UIButtonTypeRoundedRect]; b.frame = CGRectMake(c.contentView.bounds.size.width - 150, 15, 140, 32); b.autoresizingMask = UIViewAutoresizingFlexibleLeftMargin; b.tag = ip.row;
-    [b setTitle:[NSString stringWithFormat:@"%@ × %@", [x objectForKey:@"sets"], [x objectForKey:@"reps"]] forState:UIControlStateNormal]; b.titleLabel.font = [UIFont boldSystemFontOfSize:16];
-    [b addTarget:self action:@selector(openDrum:) forControlEvents:UIControlEventTouchUpInside]; [c.contentView addSubview:b];
+    NSString *pm = [[e objectForKey:@"primary"] count] ? [[[e objectForKey:@"primary"] objectAtIndex:0] capitalizedString] : @""; NSString *eq = [e objectForKey:@"equipment"] ?: @"";
+    c.detailTextLabel.text = [LFStore isStretch:e] ? [NSString stringWithFormat:@"Stretch · %@", pm] : [NSString stringWithFormat:@"%@ · %@", pm, eq]; c.detailTextLabel.font = [UIFont systemFontOfSize:12]; c.detailTextLabel.textColor = [UIColor grayColor];
+    // the sets button is the accessory view, so the name truncates instead of running underneath it
+    UIButton *b = [UIButton buttonWithType:UIButtonTypeRoundedRect]; b.frame = CGRectMake(0, 0, 108, 32); b.tag = ip.row;
+    NSString *reps = [x objectForKey:@"reps"] ?: @""; BOOL hold = [reps hasSuffix:@"s"] && [[reps substringToIndex:[reps length] - 1] intValue] > 0;
+    [b setTitle:[NSString stringWithFormat:hold ? @"%@ × %@ hold" : @"%@ × %@", [x objectForKey:@"sets"], reps] forState:UIControlStateNormal]; b.titleLabel.font = [UIFont boldSystemFontOfSize:15]; b.titleLabel.adjustsFontSizeToFitWidth = YES; b.titleLabel.minimumFontSize = 11;
+    [b addTarget:self action:@selector(openDrum:) forControlEvents:UIControlEventTouchUpInside]; c.accessoryView = b;
     return c;
 }
 - (void)tableView:(UITableView *)tv didSelectRowAtIndexPath:(NSIndexPath *)ip {
@@ -153,7 +156,7 @@ static NSArray *repsPresets(void) { static NSArray *r = nil; if (!r) r = [[NSArr
     [UIView beginAnimations:nil context:NULL]; [UIView setAnimationDuration:0.3]; drum.frame = CGRectMake(0, b2.size.height, b2.size.width, 260); [UIView commitAnimations];
     self.tableView.contentInset = UIEdgeInsetsZero;
 }
-- (NSArray *)presetsAt:(NSInteger)row { if (row < 0 || row >= (NSInteger)[exercises count]) return repsPresets(); return [LFStore isStretch:[LFStore exercise:[[exercises objectAtIndex:row] objectForKey:@"id"]]] ? holdPresets() : repsPresets(); }
+- (NSArray *)presetsAt:(NSInteger)row { if (row < 0 || row >= (NSInteger)[exercises count]) return repsPresets(); NSDictionary *x = [exercises objectAtIndex:row]; NSString *r = [x objectForKey:@"reps"] ?: @""; BOOL hold = [r hasSuffix:@"s"] && [[r substringToIndex:[r length] - 1] intValue] > 0; return (hold || [LFStore isStretch:[LFStore exercise:[x objectForKey:@"id"]]]) ? holdPresets() : repsPresets(); }
 - (NSInteger)numberOfComponentsInPickerView:(UIPickerView *)pv { return 2; }
 - (NSInteger)pickerView:(UIPickerView *)pv numberOfRowsInComponent:(NSInteger)c { return c == 0 ? 10 : [[self presetsAt:pickRow] count]; }
 - (NSString *)pickerView:(UIPickerView *)pv titleForRow:(NSInteger)row forComponent:(NSInteger)c { return c == 0 ? [NSString stringWithFormat:@"%ld set%@", (long)row + 1, row ? @"s" : @""] : ([self presetsAt:pickRow] == holdPresets() ? [NSString stringWithFormat:@"hold %@", [holdPresets() objectAtIndex:row]] : [NSString stringWithFormat:@"%@ reps", [repsPresets() objectAtIndex:row]]); }

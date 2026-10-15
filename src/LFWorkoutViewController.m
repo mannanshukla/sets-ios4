@@ -5,7 +5,10 @@
 
 static NSString *fmtTime(NSTimeInterval t) { int s = (int)t; return s >= 3600 ? [NSString stringWithFormat:@"%d:%02d:%02d", s/3600, (s/60)%60, s%60] : [NSString stringWithFormat:@"%d:%02d", s/60, s%60]; }
 static NSString *unit(void) { return [LFStore useKg] ? @"kg" : @"lb"; }
-static BOOL stretchEx(NSDictionary *ex) { return [LFStore isStretch:[LFStore exercise:[ex objectForKey:@"id"]]]; }
+static BOOL stretchEx(NSDictionary *ex) {   // true for stretches and for anything whose target is a hold like "30s" (planks, hangs)
+    if ([LFStore isStretch:[LFStore exercise:[ex objectForKey:@"id"]]]) return YES;
+    NSString *t = [ex objectForKey:@"target"]; return [t isKindOfClass:[NSString class]] && [t hasSuffix:@"s"] && [[t substringToIndex:[t length] - 1] intValue] > 0;
+}
 #define HOLD_ROWS 37   /* 0 .. 180 s in 5s */
 static double weightStep(void) { return [LFStore useKg] ? 1.0 : 2.5; }
 #define WEIGHT_ROWS 241   /* 0 .. 600 lb in 2.5s, or 0 .. 240 kg in 1s */
