@@ -208,8 +208,8 @@ static double weightStep(void) { return [LFStore useKg] ? 1.0 : 2.5; }
 #pragma mark table
 - (NSInteger)numberOfSectionsInTableView:(UITableView *)tv { return active ? [exercises count] + 1 : 2; }
 - (NSInteger)tableView:(UITableView *)tv numberOfRowsInSection:(NSInteger)s {
-    if (!active) return s == 0 ? 1 : [routines count];
-    return s < (NSInteger)[exercises count] ? [[[exercises objectAtIndex:s] objectForKey:@"sets"] count] + 1 : 1;
+    if (!active) return s == 0 ? 1 : MAX(1, (NSInteger)[routines count]);
+    return s < (NSInteger)[exercises count] ? [[[exercises objectAtIndex:s] objectForKey:@"sets"] count] + 1 : 2;
 }
 - (NSString *)tableView:(UITableView *)tv titleForHeaderInSection:(NSInteger)s {
     if (!active) return s == 1 ? ([routines count] ? @"Start from a routine" : nil) : nil;
@@ -228,12 +228,13 @@ static double weightStep(void) { return [LFStore useKg] ? 1.0 : 2.5; }
     return LFPaperHeader(tv.bounds.size.width, [self tableView:tv heightForHeaderInSection:s], t);
 }
 - (void)tableView:(UITableView *)tv willDisplayCell:(UITableViewCell *)c forRowAtIndexPath:(NSIndexPath *)ip { LFPaperCell(c); }
-- (NSString *)tableView:(UITableView *)tv titleForFooterInSection:(NSInteger)s {
-    if (!active && s == 1 && ![routines count]) return @"Make a routine in the Routines tab, or let OpenRelay write one.";
-    if (active && s == (NSInteger)[exercises count]) return @"Tap the circle when a set is done. The rest timer starts on its own.";
+- (NSString *)noteAt:(NSIndexPath *)ip {
+    if (!active && ip.section == 1 && ![routines count]) return @"No routines yet. Tap here to make one in Routines, or let OpenRelay write one.";
+    if (active && ip.section == (NSInteger)[exercises count] && ip.row == 1) return @"Tap the circle when a set is done. The rest timer starts on its own.";
     return nil;
 }
 - (UITableViewCell *)tableView:(UITableView *)tv cellForRowAtIndexPath:(NSIndexPath *)ip {
+    NSString *note = [self noteAt:ip]; if (note) return LFPaperNoteCell(note);
     UITableViewCell *c = [[[UITableViewCell alloc] initWithStyle:UITableViewCellStyleSubtitle reuseIdentifier:nil] autorelease];
     UIColor *olive = [UIColor colorWithRed:0x5B/255.0 green:0x3F/255.0 blue:0xA6/255.0 alpha:1];
     if (!active) {
@@ -278,6 +279,7 @@ static double weightStep(void) { return [LFStore useKg] ? 1.0 : 2.5; }
 }
 - (void)tableView:(UITableView *)tv didSelectRowAtIndexPath:(NSIndexPath *)ip {
     [tv deselectRowAtIndexPath:ip animated:YES];
+    if ([self noteAt:ip]) { if (!active) self.tabBarController.selectedIndex = 1; return; }
     if (!active) {
         if (ip.section == 0) [LFWorkoutViewController startEmpty]; else [LFWorkoutViewController startFromRoutine:[routines objectAtIndex:ip.row]];
         [self load]; return;
@@ -305,8 +307,9 @@ static double weightStep(void) { return [LFStore useKg] ? 1.0 : 2.5; }
 - (void)tableView:(UITableView *)tv willDisplayCell:(UITableViewCell *)c forRowAtIndexPath:(NSIndexPath *)ip { LFPaperCell(c); }
 - (void)dealloc { [workouts release]; [super dealloc]; }
 - (void)viewWillAppear:(BOOL)a { [super viewWillAppear:a]; [workouts release]; workouts = [[LFStore workouts] retain]; [self.tableView reloadData]; }
-- (NSInteger)tableView:(UITableView *)tv numberOfRowsInSection:(NSInteger)s { return [workouts count]; }
+- (NSInteger)tableView:(UITableView *)tv numberOfRowsInSection:(NSInteger)s { return MAX(1, (NSInteger)[workouts count]); }
 - (UITableViewCell *)tableView:(UITableView *)tv cellForRowAtIndexPath:(NSIndexPath *)ip {
+    if (![workouts count]) return LFPaperNoteCell(@"No workouts yet. Finish one and it's written down here.");
     UITableViewCell *c = [tv dequeueReusableCellWithIdentifier:@"h"];
     if (!c) { c = [[[UITableViewCell alloc] initWithStyle:UITableViewCellStyleSubtitle reuseIdentifier:@"h"] autorelease]; c.accessoryType = UITableViewCellAccessoryDisclosureIndicator; c.detailTextLabel.textColor = [UIColor colorWithWhite:0.45 alpha:1]; }
     NSDictionary *w = [workouts objectAtIndex:ip.row];
@@ -315,12 +318,12 @@ static double weightStep(void) { return [LFStore useKg] ? 1.0 : 2.5; }
     c.detailTextLabel.text = [NSString stringWithFormat:@"%@ · %@ · %.0f %@", [f stringFromDate:[NSDate dateWithTimeIntervalSince1970:[[w objectForKey:@"start"] doubleValue]]], fmtTime([[w objectForKey:@"end"] doubleValue] - [[w objectForKey:@"start"] doubleValue]), [LFStore volumeOf:w], unit()];
     return c;
 }
-- (void)tableView:(UITableView *)tv didSelectRowAtIndexPath:(NSIndexPath *)ip { LFWorkoutDetailViewController *d = [[LFWorkoutDetailViewController alloc] initWithWorkout:[workouts objectAtIndex:ip.row]]; [self.navigationController pushViewController:d animated:YES]; [d release]; }
-- (BOOL)tableView:(UITableView *)tv canEditRowAtIndexPath:(NSIndexPath *)ip { return YES; }
+- (void)tableView:(UITableView *)tv didSelectRowAtIndexPath:(NSIndexPath *)ip { if (![workouts count]) return; LFWorkoutDetailViewController *d = [[LFWorkoutDetailViewController alloc] initWithWorkout:[workouts objectAtIndex:ip.row]]; [self.navigationController pushViewController:d animated:YES]; [d release]; }
+- (BOOL)tableView:(UITableView *)tv canEditRowAtIndexPath:(NSIndexPath *)ip { return [workouts count] > 0; }
 - (void)tableView:(UITableView *)tv commitEditingStyle:(UITableViewCellEditingStyle)st forRowAtIndexPath:(NSIndexPath *)ip {
     if (st != UITableViewCellEditingStyleDelete) return;
     NSMutableArray *all = [NSMutableArray arrayWithArray:workouts]; [all removeObjectAtIndex:ip.row]; [LFStore saveWorkouts:all]; [workouts release]; workouts = [all retain];
-    [tv deleteRowsAtIndexPaths:[NSArray arrayWithObject:ip] withRowAnimation:UITableViewRowAnimationFade];
+    if ([workouts count]) [tv deleteRowsAtIndexPaths:[NSArray arrayWithObject:ip] withRowAnimation:UITableViewRowAnimationFade]; else [tv reloadData];
 }
 @end
 

@@ -1,3 +1,4 @@
+#import "LFSkin.h"
 #import "LFProgressViewController.h"
 #import "LFStore.h"
 #import <QuartzCore/QuartzCore.h>
@@ -66,8 +67,9 @@ static void glossDot(CGContextRef c, CGPoint p, UIColor *col) {
     [[UIColor blackColor] set]; CGContextSetLineWidth(c, 3); CGContextAddPath(c, [UIBezierPath bezierPathWithRoundedRect:CGRectInset(panel, -3, -3) cornerRadius:8].CGPath); CGContextStrokePath(c); CGContextRestoreGState(c);
     CGContextRestoreGState(c);
     [[UIColor colorWithWhite:0.62 alpha:1] set]; rr.lineWidth = 1; [rr stroke];
-    if (n < (bars ? 1 : 2)) {
-        etched(n == 1 ? @"One entry so far. Log another to see a line." : @"Not enough data yet.", CGRectMake(10, b.size.height / 2 - 10, b.size.width - 20, 20), [UIFont systemFontOfSize:14], UITextAlignmentCenter, [UIColor colorWithWhite:0.5 alpha:1]);
+    double total = 0; for (NSNumber *v in ys) total += fabs([v doubleValue]);
+    if (n < (bars ? 1 : 2) || (bars && total <= 0)) {   // an all-zero bar chart is empty, not a chart with a 1.2 axis
+        etched(bars ? @"Finish a workout to see weekly volume." : n == 1 ? @"One entry so far. Log another to see a line." : @"Not enough data yet.", CGRectMake(10, b.size.height / 2 - 10, b.size.width - 20, 20), [UIFont systemFontOfSize:14], UITextAlignmentCenter, [UIColor colorWithWhite:0.5 alpha:1]);
         CGColorSpaceRelease(cs); return;
     }
     CGFloat L = 46, R = 14, T = 22, B = 22;
@@ -287,7 +289,7 @@ static int bwRows(void) { return [LFStore useKg] ? 501 : 1001; }   // 0..250 kg 
 @end
 
 @implementation LFExerciseProgressViewController
-- (id)initWithExercise:(NSString *)e { if ((self = [super initWithStyle:UITableViewStyleGrouped])) { eid = [e copy]; self.title = [[LFStore exercise:e] objectForKey:@"name"]; } return self; }
+- (id)initWithExercise:(NSString *)e { if ((self = [super initWithStyle:UITableViewStyleGrouped])) { eid = [e copy]; LFFitTitle(self, [[LFStore exercise:e] objectForKey:@"name"]); } return self; }
 - (void)dealloc { [eid release]; [sessions release]; [mode release]; [chart release]; [super dealloc]; }
 - (void)viewDidLoad {
     [super viewDidLoad];

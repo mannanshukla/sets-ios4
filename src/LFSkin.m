@@ -25,7 +25,7 @@ void LFSkinNavBar(UINavigationBar *bar) {
 }
 @interface LFPaperBackground : UIView @end
 @implementation LFPaperBackground
-- (void)drawRect:(CGRect)r { CGContextRef c = UIGraphicsGetCurrentContext(); drawPaper(c, self.bounds, NO); [ruleColor() set]; CGContextSetLineWidth(c, 1); for (CGFloat y = RULE_H - 0.5; y < self.bounds.size.height; y += RULE_H) { CGContextMoveToPoint(c, 0, y); CGContextAddLineToPoint(c, self.bounds.size.width, y); } CGContextStrokePath(c); }
+- (void)drawRect:(CGRect)r { CGContextRef c = UIGraphicsGetCurrentContext(); drawPaper(c, self.bounds, NO); [ruleColor() set]; CGContextSetLineWidth(c, 1); UITableView *tv = (UITableView *)self.superview; CGFloat h = [tv isKindOfClass:[UITableView class]] && tv.rowHeight >= 30 ? tv.rowHeight : RULE_H; for (CGFloat y = h - 0.5; y < self.bounds.size.height; y += h) { CGContextMoveToPoint(c, 0, y); CGContextAddLineToPoint(c, self.bounds.size.width, y); } CGContextStrokePath(c); }
 @end
 @interface LFPaperRow : UIView { BOOL selected; } @property (nonatomic, assign) BOOL selected; @end
 @implementation LFPaperRow
@@ -47,4 +47,18 @@ UIView *LFPaperHeader(CGFloat width, CGFloat height, NSString *text) {
     UILabel *l = [[[UILabel alloc] initWithFrame:CGRectMake(12, 6, width - 24, height - 10)] autorelease]; l.text = text; l.font = [UIFont boldSystemFontOfSize:16]; l.numberOfLines = 0; l.lineBreakMode = UILineBreakModeWordWrap;
     l.textColor = [UIColor colorWithRed:0.30 green:0.20 blue:0.50 alpha:1]; l.shadowColor = [UIColor colorWithWhite:1 alpha:0.8]; l.shadowOffset = CGSizeMake(0, 1); l.backgroundColor = [UIColor clearColor]; l.autoresizingMask = UIViewAutoresizingFlexibleWidth;
     [v addSubview:l]; return v;
+}
+UITableViewCell *LFPaperNoteCell(NSString *text) {
+    UITableViewCell *c = [[[UITableViewCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:nil] autorelease]; LFPaperCell(c); c.selectionStyle = UITableViewCellSelectionStyleNone;
+    c.textLabel.text = text; c.textLabel.font = [UIFont italicSystemFontOfSize:13]; c.textLabel.textColor = [UIColor colorWithWhite:0.45 alpha:1]; c.textLabel.numberOfLines = 2;
+    c.textLabel.shadowColor = [UIColor colorWithWhite:1 alpha:0.8]; c.textLabel.shadowOffset = CGSizeMake(0, 1);
+    return c;
+}
+void LFFitTitle(UIViewController *vc, NSString *title) {
+    vc.title = title;
+    UILabel *l = [[[UILabel alloc] initWithFrame:CGRectMake(0, 0, 200, 44)] autorelease]; l.text = title; l.backgroundColor = [UIColor clearColor];
+    l.font = [UIFont boldSystemFontOfSize:20]; l.adjustsFontSizeToFitWidth = YES; l.minimumFontSize = 16; l.textAlignment = UITextAlignmentCenter;
+    if ([title sizeWithFont:[UIFont boldSystemFontOfSize:16]].width > 176) { l.frame = CGRectMake(0, 0, 176, 44); l.font = [UIFont boldSystemFontOfSize:14]; l.numberOfLines = 2; l.lineBreakMode = UILineBreakModeWordWrap; l.adjustsFontSizeToFitWidth = NO; }   // long exercise names wrap onto two lines
+    l.textColor = [UIColor whiteColor]; l.shadowColor = [UIColor colorWithWhite:0 alpha:0.5]; l.shadowOffset = CGSizeMake(0, -1);
+    vc.navigationItem.titleView = l;
 }

@@ -9,7 +9,7 @@
 - (id)init { if ((self = [super initWithStyle:UITableViewStylePlain])) { self.title = @"Routines"; self.tabBarItem.title = @"Routines"; routines = [[NSMutableArray alloc] init]; } return self; }
 - (void)dealloc { [routines release]; [super dealloc]; }
 - (void)viewDidLoad {
-    [super viewDidLoad]; self.tableView.rowHeight = 56;
+    [super viewDidLoad]; self.tableView.rowHeight = 56; LFSkinPaperTable(self.tableView);
     self.navigationItem.rightBarButtonItem = [[[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemAdd target:self action:@selector(add)] autorelease];
     self.navigationItem.leftBarButtonItem = [[[UIBarButtonItem alloc] initWithTitle:@"Generate" style:UIBarButtonItemStyleBordered target:self action:@selector(generate)] autorelease];
 }
@@ -18,8 +18,10 @@
 - (void)viewDidAppear:(BOOL)a { [super viewDidAppear:a]; NSUserDefaults *d = [NSUserDefaults standardUserDefaults]; if ([d boolForKey:@"lf_open_routine"] && [routines count]) { [d removeObjectForKey:@"lf_open_routine"]; [d synchronize]; [self tableView:self.tableView didSelectRowAtIndexPath:[NSIndexPath indexPathForRow:0 inSection:0]]; } }
 - (void)add { LFRoutineEditViewController *e = [[LFRoutineEditViewController alloc] initWithRoutine:nil]; [self.navigationController pushViewController:e animated:YES]; [e release]; }
 - (void)generate { LFGenerateViewController *g = [[LFGenerateViewController alloc] init]; [self.navigationController pushViewController:g animated:YES]; [g release]; }
-- (NSInteger)tableView:(UITableView *)tv numberOfRowsInSection:(NSInteger)s { return [routines count]; }
+- (NSInteger)tableView:(UITableView *)tv numberOfRowsInSection:(NSInteger)s { return MAX(1, (NSInteger)[routines count]); }
+- (void)tableView:(UITableView *)tv willDisplayCell:(UITableViewCell *)c forRowAtIndexPath:(NSIndexPath *)ip { LFPaperCell(c); }
 - (UITableViewCell *)tableView:(UITableView *)tv cellForRowAtIndexPath:(NSIndexPath *)ip {
+    if (![routines count]) return LFPaperNoteCell(@"No routines yet. Tap + to build one, or Generate to have OpenRelay write a plan.");
     UITableViewCell *c = [tv dequeueReusableCellWithIdentifier:@"r"];
     if (!c) { c = [[[UITableViewCell alloc] initWithStyle:UITableViewCellStyleSubtitle reuseIdentifier:@"r"] autorelease]; c.accessoryType = UITableViewCellAccessoryDisclosureIndicator; c.textLabel.font = [UIFont boldSystemFontOfSize:17]; c.detailTextLabel.font = [UIFont systemFontOfSize:12]; c.detailTextLabel.textColor = [UIColor colorWithWhite:0.45 alpha:1]; }
     NSDictionary *r = [routines objectAtIndex:ip.row];
@@ -30,14 +32,15 @@
     return c;
 }
 - (void)tableView:(UITableView *)tv didSelectRowAtIndexPath:(NSIndexPath *)ip {
+    if (![routines count]) return;
     LFRoutineEditViewController *e = [[LFRoutineEditViewController alloc] initWithRoutine:[routines objectAtIndex:ip.row]];
     [self.navigationController pushViewController:e animated:YES]; [e release];
 }
-- (BOOL)tableView:(UITableView *)tv canEditRowAtIndexPath:(NSIndexPath *)ip { return YES; }
+- (BOOL)tableView:(UITableView *)tv canEditRowAtIndexPath:(NSIndexPath *)ip { return [routines count] > 0; }
 - (void)tableView:(UITableView *)tv commitEditingStyle:(UITableViewCellEditingStyle)st forRowAtIndexPath:(NSIndexPath *)ip {
     if (st != UITableViewCellEditingStyleDelete) return;
     [routines removeObjectAtIndex:ip.row]; [LFStore saveRoutines:routines];
-    [tv deleteRowsAtIndexPaths:[NSArray arrayWithObject:ip] withRowAnimation:UITableViewRowAnimationFade];
+    if ([routines count]) [tv deleteRowsAtIndexPaths:[NSArray arrayWithObject:ip] withRowAnimation:UITableViewRowAnimationFade]; else [tv reloadData];
 }
 @end
 
@@ -50,7 +53,7 @@ static NSArray *repsPresets(void) { static NSArray *r = nil; if (!r) r = [[NSArr
         isNew = (r == nil);
         routine = [[NSMutableDictionary alloc] initWithDictionary:(r ?: [NSDictionary dictionaryWithObjectsAndKeys:[LFStore newId], @"id", @"", @"name", nil])];
         exercises = [[NSMutableArray alloc] initWithArray:([r objectForKey:@"exercises"] ?: [NSArray array])];
-        self.title = isNew ? @"New Routine" : [r objectForKey:@"name"];
+        LFFitTitle(self, isNew ? @"New Routine" : [r objectForKey:@"name"]);
     }
     return self;
 }

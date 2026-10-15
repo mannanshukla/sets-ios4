@@ -1,3 +1,4 @@
+#import "LFSkin.h"
 #import <QuartzCore/QuartzCore.h>
 #import "LFExercisesViewController.h"
 #import "LFStore.h"
@@ -60,7 +61,7 @@
 // page through, Settings-style fact rows with the value on the right, then numbered steps.
 - (id)initWithExercise:(NSDictionary *)e {
     if ((self = [super initWithStyle:UITableViewStyleGrouped])) {
-        exercise = [e retain]; self.title = [e objectForKey:@"name"];
+        exercise = [e retain]; LFFitTitle(self, [e objectForKey:@"name"]);
         NSMutableArray *f = [NSMutableArray array];
         NSString *pm = [[[e objectForKey:@"primary"] componentsJoinedByString:@", "] capitalizedString]; if ([pm length]) [f addObject:[NSArray arrayWithObjects:@"Muscle", pm, nil]];
         NSString *sec = [[[e objectForKey:@"secondary"] componentsJoinedByString:@", "] capitalizedString]; if ([sec length]) [f addObject:[NSArray arrayWithObjects:@"Also works", sec, nil]];
