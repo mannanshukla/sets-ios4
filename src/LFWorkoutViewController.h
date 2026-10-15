@@ -13,5 +13,3 @@
 @interface LFWorkoutDetailViewController : UITableViewController { NSDictionary *workout; }
 - (id)initWithWorkout:(NSDictionary *)w;
 @end
-@interface LFSettingsViewController : UITableViewController <UITextFieldDelegate> { UITextField *keyField; UISegmentedControl *rest, *units; }
-@end

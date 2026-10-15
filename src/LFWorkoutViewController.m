@@ -35,8 +35,7 @@ static double weightStep(void) { return [LFStore useKg] ? 1.0 : 2.5; }
         self.navigationItem.leftBarButtonItem = [[[UIBarButtonItem alloc] initWithTitle:@"Discard" style:UIBarButtonItemStyleBordered target:self action:@selector(discard)] autorelease];
         self.navigationItem.rightBarButtonItem = [[[UIBarButtonItem alloc] initWithTitle:@"Finish" style:UIBarButtonItemStyleDone target:self action:@selector(finish)] autorelease];
     } else {
-        self.navigationItem.leftBarButtonItem = [[[UIBarButtonItem alloc] initWithTitle:@"Settings" style:UIBarButtonItemStyleBordered target:self action:@selector(openSettings)] autorelease];
-        self.navigationItem.rightBarButtonItem = nil; self.navigationItem.title = @"Workout";
+        self.navigationItem.leftBarButtonItem = nil; self.navigationItem.rightBarButtonItem = nil; self.navigationItem.title = @"Workout";
     }
     [self.tableView reloadData];
 }
@@ -54,7 +53,6 @@ static double weightStep(void) { return [LFStore useKg] ? 1.0 : 2.5; }
     else { if (restEnds > 0) { restEnds = 0; AudioServicesPlaySystemSound(kSystemSoundID_Vibrate); AudioServicesPlaySystemSound(1007); } self.navigationItem.title = fmtTime(now - [[active objectForKey:@"start"] doubleValue]); }
 }
 - (void)persist { if (!active) return; [active setObject:exercises forKey:@"exercises"]; [LFStore saveActiveWorkout:active]; }
-- (void)openSettings { LFSettingsViewController *s = [[LFSettingsViewController alloc] init]; UINavigationController *n = [[UINavigationController alloc] initWithRootViewController:s]; n.navigationBar.tintColor = self.navigationController.navigationBar.tintColor; [self presentModalViewController:n animated:YES]; [n release]; [s release]; }
 
 #pragma mark start / finish
 - (void)startRest {
@@ -331,37 +329,4 @@ static double weightStep(void) { return [LFStore useKg] ? 1.0 : 2.5; }
 }
 @end
 
-@implementation LFSettingsViewController
-- (id)init { if ((self = [super initWithStyle:UITableViewStyleGrouped])) { self.title = @"Settings"; self.navigationItem.rightBarButtonItem = [[[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemDone target:self action:@selector(done)] autorelease]; } return self; }
-- (void)dealloc { [keyField release]; [rest release]; [units release]; [super dealloc]; }
-- (void)viewDidLoad {
-    [super viewDidLoad];
-    keyField = [[UITextField alloc] initWithFrame:CGRectMake(0, 0, 260, 30)];
-    keyField.placeholder = @"or_..."; keyField.text = [LFStore apiKey]; keyField.secureTextEntry = YES; keyField.font = [UIFont systemFontOfSize:15]; keyField.delegate = self;
-    keyField.autocorrectionType = UITextAutocorrectionTypeNo; keyField.autocapitalizationType = UITextAutocapitalizationTypeNone; keyField.returnKeyType = UIReturnKeyDone; keyField.clearButtonMode = UITextFieldViewModeWhileEditing; keyField.contentVerticalAlignment = UIControlContentVerticalAlignmentCenter;
-    rest = [[UISegmentedControl alloc] initWithItems:[NSArray arrayWithObjects:@"60s", @"90s", @"2m", @"3m", nil]]; rest.segmentedControlStyle = UISegmentedControlStyleBar;
-    NSInteger r = [LFStore restSeconds]; rest.selectedSegmentIndex = r <= 60 ? 0 : r <= 90 ? 1 : r <= 120 ? 2 : 3;
-    [rest addTarget:self action:@selector(changed) forControlEvents:UIControlEventValueChanged];
-    units = [[UISegmentedControl alloc] initWithItems:[NSArray arrayWithObjects:@"lb", @"kg", nil]]; units.segmentedControlStyle = UISegmentedControlStyleBar; units.selectedSegmentIndex = [LFStore useKg] ? 1 : 0;
-    [units addTarget:self action:@selector(changed) forControlEvents:UIControlEventValueChanged];
-}
-- (void)changed { NSInteger v[4] = {60, 90, 120, 180}; [LFStore setRestSeconds:v[rest.selectedSegmentIndex]]; [LFStore setUseKg:units.selectedSegmentIndex == 1]; }
-- (void)save { [LFStore setApiKey:[keyField.text stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]]]; }
-- (void)done { [self save]; [self dismissModalViewControllerAnimated:YES]; }
-- (BOOL)textFieldShouldReturn:(UITextField *)tf { [tf resignFirstResponder]; return YES; }
-- (void)textFieldDidEndEditing:(UITextField *)tf { [self save]; }
-- (NSInteger)numberOfSectionsInTableView:(UITableView *)tv { return 4; }
-- (NSInteger)tableView:(UITableView *)tv numberOfRowsInSection:(NSInteger)s { return 1; }
-- (NSString *)tableView:(UITableView *)tv titleForHeaderInSection:(NSInteger)s { NSArray *t = [NSArray arrayWithObjects:@"Rest Timer", @"Units", @"OpenRelay API Key", @"About", nil]; return [t objectAtIndex:s]; }
-- (NSString *)tableView:(UITableView *)tv titleForFooterInSection:(NSInteger)s { return s == 2 ? @"Only used by Generate in the Routines tab. Your workouts never leave this iPod." : s == 3 ? @"Sets for iOS 4. Exercise photos and data from free-exercise-db, public domain." : nil; }
-- (UITableViewCell *)tableView:(UITableView *)tv cellForRowAtIndexPath:(NSIndexPath *)ip {
-    UITableViewCell *c = [[[UITableViewCell alloc] initWithStyle:UITableViewCellStyleValue1 reuseIdentifier:nil] autorelease];
-    c.selectionStyle = UITableViewCellSelectionStyleNone;
-    CGFloat w = c.contentView.bounds.size.width;
-    if (ip.section == 0) { rest.frame = CGRectMake(8, 7, w - 16, 30); rest.autoresizingMask = UIViewAutoresizingFlexibleWidth; [c.contentView addSubview:rest]; }
-    else if (ip.section == 1) { units.frame = CGRectMake(8, 7, w - 16, 30); units.autoresizingMask = UIViewAutoresizingFlexibleWidth; [c.contentView addSubview:units]; }
-    else if (ip.section == 2) { keyField.frame = CGRectMake(10, 7, w - 20, 30); keyField.autoresizingMask = UIViewAutoresizingFlexibleWidth; [c.contentView addSubview:keyField]; }
-    else { c.textLabel.text = @"Sets"; c.detailTextLabel.text = @"1.1"; }
-    return c;
-}
-@end
+

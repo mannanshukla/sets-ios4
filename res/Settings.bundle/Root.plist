@@ -5,8 +5,48 @@
 	<key>PreferenceSpecifiers</key>
 	<array>
 		<dict>
+			<key>Title</key>
+			<string>Workout</string>
+			<key>Type</key>
+			<string>PSGroupSpecifier</string>
+		</dict>
+		<dict>
+			<key>DefaultValue</key>
+			<integer>90</integer>
+			<key>Key</key>
+			<string>lf_rest</string>
+			<key>Title</key>
+			<string>Rest timer</string>
+			<key>Titles</key>
+			<array>
+				<string>60 seconds</string>
+				<string>90 seconds</string>
+				<string>2 minutes</string>
+				<string>3 minutes</string>
+			</array>
+			<key>Type</key>
+			<string>PSMultiValueSpecifier</string>
+			<key>Values</key>
+			<array>
+				<integer>60</integer>
+				<integer>90</integer>
+				<integer>120</integer>
+				<integer>180</integer>
+			</array>
+		</dict>
+		<dict>
+			<key>DefaultValue</key>
+			<false/>
+			<key>Key</key>
+			<string>lf_kg</string>
+			<key>Title</key>
+			<string>Kilograms</string>
+			<key>Type</key>
+			<string>PSToggleSwitchSpecifier</string>
+		</dict>
+		<dict>
 			<key>FooterText</key>
-			<string>Routine suggestions and the weekly note use OpenRelay; the key is created at openrelay.inc.</string>
+			<string>Only used by Generate in the Routines tab. Your workouts never leave this iPod.</string>
 			<key>Title</key>
 			<string>OpenRelay</string>
 			<key>Type</key>
