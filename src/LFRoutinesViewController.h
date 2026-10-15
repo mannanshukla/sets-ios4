@@ -9,7 +9,7 @@
 }
 - (id)initWithRoutine:(NSDictionary *)r;
 @end
-@interface LFGenerateViewController : UITableViewController {
+@interface LFGenerateViewController : UITableViewController <UITextFieldDelegate> {
     UISegmentedControl *goal, *level, *equipment; UISlider *days, *minutes; UILabel *daysLabel, *minutesLabel; BOOL busy; NSString *status;
-}
+ UITextField *notes;}
 @end

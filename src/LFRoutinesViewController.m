@@ -169,7 +169,7 @@ static NSArray *repsPresets(void) { static NSArray *r = nil; if (!r) r = [[NSArr
 
 @implementation LFGenerateViewController
 - (id)init { if ((self = [super initWithStyle:UITableViewStyleGrouped])) { self.title = @"Generate"; } return self; }
-- (void)dealloc { [goal release]; [level release]; [equipment release]; [days release]; [minutes release]; [daysLabel release]; [minutesLabel release]; [status release]; [super dealloc]; }
+- (void)dealloc { [goal release]; [level release]; [equipment release]; [days release]; [minutes release]; [daysLabel release]; [minutesLabel release]; [notes release]; [status release]; [super dealloc]; }
 - (UISegmentedControl *)seg:(NSArray *)items sel:(NSInteger)i { UISegmentedControl *s = [[UISegmentedControl alloc] initWithItems:items]; s.segmentedControlStyle = UISegmentedControlStyleBar; s.selectedSegmentIndex = i; s.tintColor = [UIColor colorWithRed:0x5B/255.0 green:0x3F/255.0 blue:0xA6/255.0 alpha:1]; return s; }
 - (void)viewDidLoad {
     [super viewDidLoad];
@@ -180,36 +180,39 @@ static NSArray *repsPresets(void) { static NSArray *r = nil; if (!r) r = [[NSArr
     minutes = [[UISlider alloc] initWithFrame:CGRectZero]; minutes.minimumValue = 20; minutes.maximumValue = 90; minutes.value = 45; [minutes addTarget:self action:@selector(slid) forControlEvents:UIControlEventValueChanged];
     daysLabel = [[UILabel alloc] initWithFrame:CGRectZero]; minutesLabel = [[UILabel alloc] initWithFrame:CGRectZero];
     for (UILabel *l in [NSArray arrayWithObjects:daysLabel, minutesLabel, nil]) { l.font = [UIFont boldSystemFontOfSize:15]; l.backgroundColor = [UIColor clearColor]; l.textAlignment = UITextAlignmentRight; }
+    notes = [[UITextField alloc] initWithFrame:CGRectZero]; notes.placeholder = @"Bad knee, no barbell, add stretches..."; notes.font = [UIFont systemFontOfSize:15]; notes.delegate = self; notes.returnKeyType = UIReturnKeyDone; notes.clearButtonMode = UITextFieldViewModeWhileEditing; notes.contentVerticalAlignment = UIControlContentVerticalAlignmentCenter; notes.autocapitalizationType = UITextAutocapitalizationTypeSentences;
     [self slid];
 }
+- (BOOL)textFieldShouldReturn:(UITextField *)f { [f resignFirstResponder]; return YES; }
 - (void)slid { daysLabel.text = [NSString stringWithFormat:@"%d", (int)(days.value + 0.5)]; minutesLabel.text = [NSString stringWithFormat:@"%d", (int)(minutes.value / 5 + 0.5) * 5]; }
-- (NSInteger)numberOfSectionsInTableView:(UITableView *)tv { return 6; }
+- (NSInteger)numberOfSectionsInTableView:(UITableView *)tv { return 7; }
 - (NSInteger)tableView:(UITableView *)tv numberOfRowsInSection:(NSInteger)s { return 1; }
-- (NSString *)tableView:(UITableView *)tv titleForHeaderInSection:(NSInteger)s { NSArray *t = [NSArray arrayWithObjects:@"Goal", @"Experience", @"Equipment", @"Days per week", @"Minutes per session", nil]; return s < 5 ? [t objectAtIndex:s] : nil; }
-- (NSString *)tableView:(UITableView *)tv titleForFooterInSection:(NSInteger)s { return s == 5 ? (status ?: @"OpenRelay writes one routine per training day using only exercises from this app's database. Review and edit them after.") : nil; }
+- (NSString *)tableView:(UITableView *)tv titleForHeaderInSection:(NSInteger)s { NSArray *t = [NSArray arrayWithObjects:@"Goal", @"Experience", @"Equipment", @"Days per week", @"Minutes per session", @"Anything else? (optional)", nil]; return s < 6 ? [t objectAtIndex:s] : nil; }
+- (NSString *)tableView:(UITableView *)tv titleForFooterInSection:(NSInteger)s { return s == 6 ? (status ?: @"OpenRelay writes one routine per training day using only exercises from this app's database. Review and edit them after.") : nil; }
 - (UITableViewCell *)tableView:(UITableView *)tv cellForRowAtIndexPath:(NSIndexPath *)ip {
     UITableViewCell *c = [[[UITableViewCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:nil] autorelease];
     c.selectionStyle = UITableViewCellSelectionStyleNone;
     CGFloat w = c.contentView.bounds.size.width;
     if (ip.section <= 2) { UISegmentedControl *s = ip.section == 0 ? goal : ip.section == 1 ? level : equipment; s.frame = CGRectMake(8, 7, w - 16, 30); s.autoresizingMask = UIViewAutoresizingFlexibleWidth; [c.contentView addSubview:s]; }
     else if (ip.section <= 4) { UISlider *sl = ip.section == 3 ? days : minutes; UILabel *l = ip.section == 3 ? daysLabel : minutesLabel; sl.frame = CGRectMake(8, 7, w - 70, 30); sl.autoresizingMask = UIViewAutoresizingFlexibleWidth; l.frame = CGRectMake(w - 56, 7, 46, 30); l.autoresizingMask = UIViewAutoresizingFlexibleLeftMargin; [c.contentView addSubview:sl]; [c.contentView addSubview:l]; }
+    else if (ip.section == 5) { notes.frame = CGRectMake(10, 7, w - 20, 30); notes.autoresizingMask = UIViewAutoresizingFlexibleWidth; [c.contentView addSubview:notes]; }
     else { c.selectionStyle = UITableViewCellSelectionStyleBlue; c.textLabel.text = busy ? @"Writing your routines..." : @"Generate Routines"; c.textLabel.textAlignment = UITextAlignmentCenter; c.textLabel.textColor = [UIColor colorWithRed:0x5B/255.0 green:0x3F/255.0 blue:0xA6/255.0 alpha:1]; c.textLabel.font = [UIFont boldSystemFontOfSize:17]; }
     return c;
 }
 - (void)tableView:(UITableView *)tv didSelectRowAtIndexPath:(NSIndexPath *)ip {
     [tv deselectRowAtIndexPath:ip animated:YES];
-    if (ip.section != 5 || busy) return;
-    busy = YES; [status release]; status = nil; [tv reloadData];
+    if (ip.section != 6 || busy) return;
+    [notes resignFirstResponder]; busy = YES; [status release]; status = nil; [tv reloadData];
     NSString *g = [[NSArray arrayWithObjects:@"strength", @"hypertrophy (build muscle)", @"general fitness", nil] objectAtIndex:goal.selectedSegmentIndex];
     NSString *l = [[NSArray arrayWithObjects:@"beginner", @"intermediate", @"advanced", nil] objectAtIndex:level.selectedSegmentIndex];
     NSString *eq = [[NSArray arrayWithObjects:@"full gym", @"dumbbells", @"bodyweight", nil] objectAtIndex:equipment.selectedSegmentIndex];
     NSInteger d = (NSInteger)(days.value + 0.5), m = (NSInteger)(minutes.value / 5 + 0.5) * 5;
-    [self performSelectorInBackground:@selector(run:) withObject:[NSArray arrayWithObjects:g, l, eq, [NSNumber numberWithInteger:d], [NSNumber numberWithInteger:m], nil]];
+    [self performSelectorInBackground:@selector(run:) withObject:[NSArray arrayWithObjects:g, l, eq, [NSNumber numberWithInteger:d], [NSNumber numberWithInteger:m], ([notes.text stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]] ?: @""), nil]];
 }
 - (void)run:(NSArray *)a {
     NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
     NSString *err = nil;
-    NSArray *rs = [LFAI generateRoutinesForGoal:[a objectAtIndex:0] days:[[a objectAtIndex:3] integerValue] equipment:[a objectAtIndex:2] level:[a objectAtIndex:1] minutes:[[a objectAtIndex:4] integerValue] error:&err];
+    NSArray *rs = [LFAI generateRoutinesForGoal:[a objectAtIndex:0] days:[[a objectAtIndex:3] integerValue] equipment:[a objectAtIndex:2] level:[a objectAtIndex:1] minutes:[[a objectAtIndex:4] integerValue] notes:[a objectAtIndex:5] error:&err];
     [self performSelectorOnMainThread:@selector(finished:) withObject:[NSArray arrayWithObjects:(rs ?: [NSArray array]), (err ?: @""), nil] waitUntilDone:NO];
     [pool release];
 }

@@ -31,7 +31,7 @@
     return [content isKindOfClass:[NSString class]] ? content : nil;
 }
 
-+ (NSArray *)generateRoutinesForGoal:(NSString *)goal days:(NSInteger)days equipment:(NSString *)equipment level:(NSString *)level minutes:(NSInteger)minutes error:(NSString **)err {
++ (NSArray *)generateRoutinesForGoal:(NSString *)goal days:(NSInteger)days equipment:(NSString *)equipment level:(NSString *)level minutes:(NSInteger)minutes notes:(NSString *)notes error:(NSString **)err {
     // candidate list: ids the model may use, filtered by equipment
     NSSet *allowed;
     if ([equipment isEqualToString:@"bodyweight"]) allowed = [NSSet setWithObjects:@"body only", nil];
@@ -41,14 +41,15 @@
     for (NSDictionary *e in [LFStore exercises]) {
         if (![allowed containsObject:[e objectForKey:@"equipment"] ?: @""]) continue;
         NSString *pm = [[e objectForKey:@"primary"] count] ? [[e objectForKey:@"primary"] objectAtIndex:0] : @"";
-        [cands addObject:[NSString stringWithFormat:@"%@ | %@ | %@", [e objectForKey:@"id"], pm, [e objectForKey:@"equipment"]]];
+        [cands addObject:[NSString stringWithFormat:@"%@ | %@ | %@%@", [e objectForKey:@"id"], pm, [e objectForKey:@"equipment"], [LFStore isStretch:e] ? @" | stretch" : @""]];
     }
     NSString *system = @"You are a strength coach writing workout routines. You must reply with JSON only, no prose, no markdown fences. "
         @"Schema: {\"routines\":[{\"name\":string,\"exercises\":[{\"id\":string,\"sets\":int,\"reps\":string}]}]}. "
         @"Use ONLY exercise ids from the provided list, exactly as written. reps is a short string like \"5\", \"8-12\" or \"AMRAP\". "
-        @"Each routine is one training day with 4 to 7 exercises, compounds first. Give the routines short real names like \"Push A\" or \"Lower\". Do not repeat the same exercise within a routine.";
-    NSString *user = [NSString stringWithFormat:@"Goal: %@. Level: %@. Days per week: %ld. Equipment: %@. Session length: about %ld minutes. Write exactly %ld routines, one per training day, as a sensible split for that frequency.\n\nAvailable exercises (id | primary muscle | equipment):\n%@",
-        goal, level, (long)days, equipment, (long)minutes, (long)days, [cands componentsJoinedByString:@"\n"]];
+        @"Each routine is one training day with 4 to 7 exercises, compounds first. Give the routines short real names like \"Push A\" or \"Lower\". Do not repeat the same exercise within a routine. "
+        @"Entries marked stretch are stretches: include them only as a cooldown at the end or when asked, with reps as a hold time like \"30s\". If the lifter adds notes, follow them before anything else.";
+    NSString *user = [NSString stringWithFormat:@"Goal: %@. Level: %@. Days per week: %ld. Equipment: %@. Session length: about %ld minutes.%@ Write exactly %ld routines, one per training day, as a sensible split for that frequency.\n\nAvailable exercises (id | primary muscle | equipment):\n%@",
+        goal, level, (long)days, equipment, (long)minutes, [notes length] ? [NSString stringWithFormat:@" Notes from the lifter: %@.", notes] : @"", (long)days, [cands componentsJoinedByString:@"\n"]];
     NSString *text = [self complete:system user:user model:@"openrelay/gpt-oss-120b" error:err];
     if (!text) return nil;
     // tolerate stray fences or prose around the JSON
