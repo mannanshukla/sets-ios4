@@ -1,4 +1,5 @@
 #import "LFWorkoutViewController.h"
+#import "LFSkin.h"
 #import "LFStore.h"
 #import <AudioToolbox/AudioToolbox.h>
 #import <QuartzCore/QuartzCore.h>
@@ -29,7 +30,8 @@ static double weightStep(void) { return [LFStore useKg] ? 1.0 : 2.5; }
 }
 + (void)startEmpty { [self startFromRoutine:[NSDictionary dictionaryWithObjectsAndKeys:@"Workout", @"name", [NSArray array], @"exercises", nil]]; }
 
-- (id)init { if ((self = [super initWithStyle:UITableViewStyleGrouped])) { self.title = @"Workout"; self.tabBarItem.title = @"Workout"; } return self; }
+- (id)init { if ((self = [super initWithStyle:UITableViewStylePlain])) { self.title = @"Workout"; self.tabBarItem.title = @"Workout"; } return self; }
+- (void)viewDidLoad { [super viewDidLoad]; LFSkinPaperTable(self.tableView); }
 - (void)dealloc { [tick invalidate]; [active release]; [exercises release]; [routines release]; [drum release]; [picker release]; [drumTitle release]; [super dealloc]; }
 - (void)load {
     NSDictionary *a = [LFStore activeWorkout];
@@ -92,7 +94,7 @@ static double weightStep(void) { return [LFStore useKg] ? 1.0 : 2.5; }
     }
     [LFStore saveActiveWorkout:nil]; [self load];
 }
-- (void)addExercise { LFExercisesViewController *p = [[LFExercisesViewController alloc] init]; p.picker = self; UINavigationController *n = [[UINavigationController alloc] initWithRootViewController:p]; n.navigationBar.tintColor = self.navigationController.navigationBar.tintColor; [self presentModalViewController:n animated:YES]; [n release]; [p release]; }
+- (void)addExercise { LFExercisesViewController *p = [[LFExercisesViewController alloc] init]; p.picker = self; UINavigationController *n = [[UINavigationController alloc] initWithRootViewController:p]; n.navigationBar.tintColor = self.navigationController.navigationBar.tintColor; LFSkinNavBar(n.navigationBar); [self presentModalViewController:n animated:YES]; [n release]; [p release]; }
 - (void)exercisesPicker:(LFExercisesViewController *)p didPick:(NSDictionary *)e {
     NSDictionary *best = [LFStore bestSetFor:[e objectForKey:@"id"]];
     NSMutableArray *sets = [NSMutableArray array];
@@ -217,21 +219,15 @@ static double weightStep(void) { return [LFStore useKg] ? 1.0 : 2.5; }
     return [t length] ? [NSString stringWithFormat:(stretchEx(ex) ? @"%@  (hold %@)" : @"%@  (%@ reps)"), [e objectForKey:@"name"], t] : [e objectForKey:@"name"];
 }
 - (CGFloat)tableView:(UITableView *)tv heightForHeaderInSection:(NSInteger)s {
-    NSString *t = [self tableView:tv titleForHeaderInSection:s]; if (![t length]) return 10;
+    NSString *t = [self tableView:tv titleForHeaderInSection:s]; if (![t length]) return 0;
     CGSize sz = [t sizeWithFont:[UIFont boldSystemFontOfSize:16] constrainedToSize:CGSizeMake(tv.bounds.size.width - 40, 60) lineBreakMode:UILineBreakModeWordWrap];
     return sz.height + 18;
 }
 - (UIView *)tableView:(UITableView *)tv viewForHeaderInSection:(NSInteger)s {
     NSString *t = [self tableView:tv titleForHeaderInSection:s]; if (![t length]) return nil;
-    CGFloat h = [self tableView:tv heightForHeaderInSection:s];
-    UIView *v = [[[UIView alloc] initWithFrame:CGRectMake(0, 0, tv.bounds.size.width, h)] autorelease];
-    UILabel *l = [[[UILabel alloc] initWithFrame:CGRectMake(20, 8, tv.bounds.size.width - 40, h - 12)] autorelease];
-    l.text = t; l.font = [UIFont boldSystemFontOfSize:16]; l.numberOfLines = 0; l.lineBreakMode = UILineBreakModeWordWrap;
-    l.textColor = [UIColor colorWithRed:0.30 green:0.34 blue:0.42 alpha:1]; l.shadowColor = [UIColor whiteColor]; l.shadowOffset = CGSizeMake(0, 1); l.backgroundColor = [UIColor clearColor];
-    l.autoresizingMask = UIViewAutoresizingFlexibleWidth;
-    [v addSubview:l];
-    return v;
+    return LFPaperHeader(tv.bounds.size.width, [self tableView:tv heightForHeaderInSection:s], t);
 }
+- (void)tableView:(UITableView *)tv willDisplayCell:(UITableViewCell *)c forRowAtIndexPath:(NSIndexPath *)ip { LFPaperCell(c); }
 - (NSString *)tableView:(UITableView *)tv titleForFooterInSection:(NSInteger)s {
     if (!active && s == 1 && ![routines count]) return @"Make a routine in the Routines tab, or let OpenRelay write one.";
     if (active && s == (NSInteger)[exercises count]) return @"Tap the circle when a set is done. The rest timer starts on its own.";
@@ -305,6 +301,8 @@ static double weightStep(void) { return [LFStore useKg] ? 1.0 : 2.5; }
 
 @implementation LFHistoryViewController
 - (id)init { if ((self = [super initWithStyle:UITableViewStylePlain])) { self.title = @"History"; self.tabBarItem.title = @"History"; } return self; }
+- (void)viewDidLoad { [super viewDidLoad]; LFSkinPaperTable(self.tableView); }
+- (void)tableView:(UITableView *)tv willDisplayCell:(UITableViewCell *)c forRowAtIndexPath:(NSIndexPath *)ip { LFPaperCell(c); }
 - (void)dealloc { [workouts release]; [super dealloc]; }
 - (void)viewWillAppear:(BOOL)a { [super viewWillAppear:a]; [workouts release]; workouts = [[LFStore workouts] retain]; [self.tableView reloadData]; }
 - (NSInteger)tableView:(UITableView *)tv numberOfRowsInSection:(NSInteger)s { return [workouts count]; }

@@ -18,38 +18,72 @@ static NSString *fmtSigned(double d) { return d == 0 ? @"±0" : [NSString string
 
 #define CHART_H 170
 
+// Era chart: graph paper in an inset panel, a glowing line over a gradient fill, glossy dots, etched labels. Weightbot did it this way.
+static void etched(NSString *t, CGRect r, UIFont *f, UITextAlignment a, UIColor *col) {
+    CGContextRef c = UIGraphicsGetCurrentContext(); CGContextSaveGState(c);
+    CGContextSetShadowWithColor(c, CGSizeMake(0, 1), 0, [UIColor colorWithWhite:1 alpha:0.9].CGColor); [col set];
+    [t drawInRect:r withFont:f lineBreakMode:UILineBreakModeClip alignment:a]; CGContextRestoreGState(c);
+}
+static void glossBar(CGContextRef c, CGRect r, UIColor *col) {
+    const CGFloat *k = CGColorGetComponents(col.CGColor); CGFloat r0 = k[0], g0 = k[1], b0 = CGColorGetNumberOfComponents(col.CGColor) >= 4 ? k[2] : k[0];   // iOS 4 has no getHue:, so lighten and darken in RGB
+    UIColor *top = [UIColor colorWithRed:MIN(1, r0 * 1.25 + 0.08) green:MIN(1, g0 * 1.25 + 0.08) blue:MIN(1, b0 * 1.25 + 0.08) alpha:1], *bot = [UIColor colorWithRed:r0 * 0.78 green:g0 * 0.78 blue:b0 * 0.78 alpha:1];
+    CGContextSaveGState(c);
+    CGContextSetShadowWithColor(c, CGSizeMake(0, 1), 2, [UIColor colorWithWhite:0 alpha:0.35].CGColor);
+    [bot set]; CGContextFillRect(c, r); CGContextRestoreGState(c);
+    CGContextSaveGState(c); CGContextClipToRect(c, r);
+    CGColorSpaceRef cs = CGColorSpaceCreateDeviceRGB(); CGFloat locs[2] = {0, 1};
+    CGGradientRef g = CGGradientCreateWithColors(cs, (CFArrayRef)[NSArray arrayWithObjects:(id)top.CGColor, (id)bot.CGColor, nil], locs);
+    CGContextDrawLinearGradient(c, g, CGPointMake(r.origin.x, r.origin.y), CGPointMake(r.origin.x, CGRectGetMaxY(r)), 0); CGGradientRelease(g); CGColorSpaceRelease(cs);
+    [[UIColor colorWithWhite:1 alpha:0.45] set]; CGContextFillRect(c, CGRectMake(r.origin.x + 1, r.origin.y, r.size.width - 2, 1));   // highlight on the lip
+    CGContextRestoreGState(c);
+    [[bot colorWithAlphaComponent:0.9] set]; CGContextSetLineWidth(c, 1); CGContextStrokeRect(c, CGRectInset(r, 0.5, 0.5));
+}
+static void glossDot(CGContextRef c, CGPoint p, UIColor *col) {
+    CGRect d = CGRectMake(p.x - 4.5, p.y - 4.5, 9, 9);
+    CGContextSaveGState(c); CGContextSetShadowWithColor(c, CGSizeMake(0, 1), 1.5, [UIColor colorWithWhite:0 alpha:0.4].CGColor); [[UIColor whiteColor] set]; CGContextFillEllipseInRect(c, d); CGContextRestoreGState(c);
+    [col set]; CGContextFillEllipseInRect(c, CGRectInset(d, 2, 2));
+    [[UIColor colorWithWhite:1 alpha:0.6] set]; CGContextFillEllipseInRect(c, CGRectMake(p.x - 1.5, p.y - 2.8, 2.6, 1.6));
+}
 @implementation LFChartView
-- (id)initWithFrame:(CGRect)f { if ((self = [super initWithFrame:f])) { self.backgroundColor = [UIColor whiteColor]; self.contentMode = UIViewContentModeRedraw; } return self; }
+- (id)initWithFrame:(CGRect)f { if ((self = [super initWithFrame:f])) { self.backgroundColor = [UIColor clearColor]; self.opaque = NO; self.contentMode = UIViewContentModeRedraw; } return self; }
 - (void)dealloc { [xs release]; [ys release]; [unitStr release]; [super dealloc]; }
 - (void)setXs:(NSArray *)x ys:(NSArray *)y bars:(BOOL)b unit:(NSString *)u { [xs release]; xs = [x retain]; [ys release]; ys = [y retain]; bars = b; [unitStr release]; unitStr = [u retain]; [self setNeedsDisplay]; }
 - (void)drawRect:(CGRect)rect {
     CGContextRef c = UIGraphicsGetCurrentContext();
-    CGRect b = self.bounds;
-    NSUInteger n = [ys count];
+    CGRect b = self.bounds; NSUInteger n = [ys count];
+    // the panel: inset, graph paper
+    CGRect panel = CGRectInset(b, 1, 1); UIBezierPath *rr = [UIBezierPath bezierPathWithRoundedRect:panel cornerRadius:6];
+    CGContextSaveGState(c); [rr addClip];
+    CGColorSpaceRef cs = CGColorSpaceCreateDeviceRGB(); CGFloat locs[2] = {0, 1};
+    CGGradientRef g = CGGradientCreateWithColors(cs, (CFArrayRef)[NSArray arrayWithObjects:(id)[UIColor colorWithRed:0.97 green:0.97 blue:0.95 alpha:1].CGColor, (id)[UIColor colorWithRed:0.93 green:0.93 blue:0.90 alpha:1].CGColor, nil], locs);
+    CGContextDrawLinearGradient(c, g, CGPointMake(0, 0), CGPointMake(0, b.size.height), 0); CGGradientRelease(g);
+    [[UIColor colorWithRed:0.78 green:0.84 blue:0.90 alpha:0.55] set]; CGContextSetLineWidth(c, 1);
+    for (CGFloat x = 8.5; x < b.size.width; x += 12) { CGContextMoveToPoint(c, x, 0); CGContextAddLineToPoint(c, x, b.size.height); }
+    for (CGFloat y = 8.5; y < b.size.height; y += 12) { CGContextMoveToPoint(c, 0, y); CGContextAddLineToPoint(c, b.size.width, y); }
+    CGContextStrokePath(c);
+    // inner shadow along the top and left, like a recessed window
+    CGContextSaveGState(c); CGContextSetShadowWithColor(c, CGSizeMake(0, 2), 4, [UIColor colorWithWhite:0 alpha:0.35].CGColor);
+    [[UIColor blackColor] set]; CGContextSetLineWidth(c, 3); CGContextAddPath(c, [UIBezierPath bezierPathWithRoundedRect:CGRectInset(panel, -3, -3) cornerRadius:8].CGPath); CGContextStrokePath(c); CGContextRestoreGState(c);
+    CGContextRestoreGState(c);
+    [[UIColor colorWithWhite:0.62 alpha:1] set]; rr.lineWidth = 1; [rr stroke];
     if (n < (bars ? 1 : 2)) {
-        [[UIColor colorWithWhite:0.6 alpha:1] set];
-        [(n == 1 ? @"One entry so far. Log another to see a line." : @"Not enough data yet.") drawInRect:CGRectMake(10, b.size.height / 2 - 10, b.size.width - 20, 20) withFont:[UIFont systemFontOfSize:14] lineBreakMode:UILineBreakModeTailTruncation alignment:UITextAlignmentCenter];
-        return;
+        etched(n == 1 ? @"One entry so far. Log another to see a line." : @"Not enough data yet.", CGRectMake(10, b.size.height / 2 - 10, b.size.width - 20, 20), [UIFont systemFontOfSize:14], UITextAlignmentCenter, [UIColor colorWithWhite:0.5 alpha:1]);
+        CGColorSpaceRelease(cs); return;
     }
-    CGFloat L = 44, R = 12, T = 18, B = 20;
+    CGFloat L = 46, R = 14, T = 22, B = 22;
     CGRect plot = CGRectMake(L, T, b.size.width - L - R, b.size.height - T - B);
     double ymin = 1e300, ymax = -1e300;
     for (NSNumber *v in ys) { double d = [v doubleValue]; if (d < ymin) ymin = d; if (d > ymax) ymax = d; }
     if (bars) ymin = 0;
     if (ymax - ymin < 1e-9) { ymin -= 1; ymax += 1; }
     double pad = (ymax - ymin) * 0.1; if (!bars) ymin -= pad; ymax += pad;
-    // gridlines + y labels
-    UIFont *small = [UIFont systemFontOfSize:10];
-    CGContextSetLineWidth(c, 1);
+    UIFont *small = [UIFont boldSystemFontOfSize:10]; UIColor *dim = [UIColor colorWithWhite:0.42 alpha:1];
     for (int i = 0; i <= 2; i++) {
         double v = ymin + (ymax - ymin) * i / 2.0;
         CGFloat py = floorf(CGRectGetMaxY(plot) - (v - ymin) / (ymax - ymin) * plot.size.height) + 0.5;
-        [[UIColor colorWithWhite:0.88 alpha:1] set];
-        CGContextMoveToPoint(c, plot.origin.x, py); CGContextAddLineToPoint(c, CGRectGetMaxX(plot), py); CGContextStrokePath(c);
-        [[UIColor colorWithWhite:0.5 alpha:1] set];
-        [fmtNum(v) drawInRect:CGRectMake(0, py - 6, L - 6, 12) withFont:small lineBreakMode:UILineBreakModeClip alignment:UITextAlignmentRight];
+        [[UIColor colorWithWhite:0.55 alpha:0.5] set]; CGContextSetLineWidth(c, 1); CGContextMoveToPoint(c, plot.origin.x, py); CGContextAddLineToPoint(c, CGRectGetMaxX(plot), py); CGContextStrokePath(c);
+        etched(fmtNum(v), CGRectMake(0, py - 6, L - 8, 12), small, UITextAlignmentRight, dim);
     }
-    // x mapping
     double xmin = [[xs objectAtIndex:0] doubleValue], xmax = [[xs lastObject] doubleValue];
     if (bars || xmax - xmin < 1e-9) { xmin = 0; xmax = n - 1; }
     CGFloat (^px)(NSUInteger) = ^CGFloat(NSUInteger i) {
@@ -58,44 +92,35 @@ static NSString *fmtSigned(double d) { return d == 0 ? @"±0" : [NSString string
         return plot.origin.x + (CGFloat)((x - xmin) / (xmax - xmin)) * plot.size.width;
     };
     CGFloat (^py)(NSUInteger) = ^CGFloat(NSUInteger i) { return CGRectGetMaxY(plot) - (CGFloat)(([[ys objectAtIndex:i] doubleValue] - ymin) / (ymax - ymin)) * plot.size.height; };
+    UIColor *accent = green();
     if (bars) {
         CGFloat bw = floorf(plot.size.width / n * 0.62);
         for (NSUInteger i = 0; i < n; i++) {
-            double v = [[ys objectAtIndex:i] doubleValue];
-            CGFloat x = floorf(px(i) - bw / 2), top = py(i);
-            if (v <= 0) { [[UIColor colorWithWhite:0.85 alpha:1] set]; CGContextFillRect(c, CGRectMake(x, CGRectGetMaxY(plot) - 2, bw, 2)); continue; }
-            [(i == n - 1 ? green() : [UIColor colorWithRed:0xA9/255.0 green:0x98/255.0 blue:0xD6/255.0 alpha:1]) set];
-            CGContextFillRect(c, CGRectMake(x, top, bw, CGRectGetMaxY(plot) - top));
+            double v = [[ys objectAtIndex:i] doubleValue]; CGFloat x = floorf(px(i) - bw / 2), top = floorf(py(i));
+            if (v <= 0) { [[UIColor colorWithWhite:0.7 alpha:1] set]; CGContextFillRect(c, CGRectMake(x, CGRectGetMaxY(plot) - 2, bw, 2)); continue; }
+            glossBar(c, CGRectMake(x, top, bw, CGRectGetMaxY(plot) - top), i == n - 1 ? accent : [UIColor colorWithRed:0.60 green:0.52 blue:0.80 alpha:1]);
         }
     } else {
-        // fill under the line
         CGContextSaveGState(c);
-        CGContextMoveToPoint(c, px(0), CGRectGetMaxY(plot));
-        for (NSUInteger i = 0; i < n; i++) CGContextAddLineToPoint(c, px(i), py(i));
-        CGContextAddLineToPoint(c, px(n - 1), CGRectGetMaxY(plot)); CGContextClosePath(c);
-        [[green() colorWithAlphaComponent:0.14] set]; CGContextFillPath(c);
-        CGContextRestoreGState(c);
-        // line
-        [green() set]; CGContextSetLineWidth(c, 2); CGContextSetLineJoin(c, kCGLineJoinRound); CGContextSetLineCap(c, kCGLineCapRound);
-        CGContextMoveToPoint(c, px(0), py(0));
-        for (NSUInteger i = 1; i < n; i++) CGContextAddLineToPoint(c, px(i), py(i));
-        CGContextStrokePath(c);
-        if (n <= 40) for (NSUInteger i = 0; i < n; i++) {
-            CGRect d = CGRectMake(px(i) - 3, py(i) - 3, 6, 6);
-            [[UIColor whiteColor] set]; CGContextFillEllipseInRect(c, d);
-            [green() set]; CGContextSetLineWidth(c, 1.5); CGContextStrokeEllipseInRect(c, d);
-        }
+        CGContextMoveToPoint(c, px(0), CGRectGetMaxY(plot)); for (NSUInteger i = 0; i < n; i++) CGContextAddLineToPoint(c, px(i), py(i)); CGContextAddLineToPoint(c, px(n - 1), CGRectGetMaxY(plot)); CGContextClosePath(c); CGContextClip(c);
+        CGGradientRef fg = CGGradientCreateWithColors(cs, (CFArrayRef)[NSArray arrayWithObjects:(id)[accent colorWithAlphaComponent:0.55].CGColor, (id)[accent colorWithAlphaComponent:0.04].CGColor, nil], locs);
+        CGContextDrawLinearGradient(c, fg, CGPointMake(0, plot.origin.y), CGPointMake(0, CGRectGetMaxY(plot)), 0); CGGradientRelease(fg); CGContextRestoreGState(c);
+        // the line: a dark shadow under, the colour, then a thin white highlight on top
+        CGContextSetLineJoin(c, kCGLineJoinRound); CGContextSetLineCap(c, kCGLineCapRound);
+        CGContextSaveGState(c); CGContextSetShadowWithColor(c, CGSizeMake(0, 2), 3, [UIColor colorWithWhite:0 alpha:0.45].CGColor);
+        [accent set]; CGContextSetLineWidth(c, 3.5); CGContextMoveToPoint(c, px(0), py(0)); for (NSUInteger i = 1; i < n; i++) CGContextAddLineToPoint(c, px(i), py(i)); CGContextStrokePath(c); CGContextRestoreGState(c);
+        [[UIColor colorWithWhite:1 alpha:0.55] set]; CGContextSetLineWidth(c, 1); CGContextMoveToPoint(c, px(0), py(0) - 1.2); for (NSUInteger i = 1; i < n; i++) CGContextAddLineToPoint(c, px(i), py(i) - 1.2); CGContextStrokePath(c);
+        if (n <= 40) for (NSUInteger i = 0; i < n; i++) glossDot(c, CGPointMake(px(i), py(i)), accent);
     }
-    // last value callout, top right above the plot so it never sits on the data
-    NSString *last = [NSString stringWithFormat:@"%@ %@", bars ? @"this week" : @"latest", fmtNum([[ys lastObject] doubleValue])];
-    last = [NSString stringWithFormat:@"%@ %@", last, unitStr ?: @""];
-    [green() set];
-    [last drawInRect:CGRectMake(plot.origin.x, 3, plot.size.width, 13) withFont:[UIFont boldSystemFontOfSize:11] lineBreakMode:UILineBreakModeClip alignment:UITextAlignmentRight];
-    // x labels: first and last
-    [[UIColor colorWithWhite:0.5 alpha:1] set];
+    // callout badge, top right
+    NSString *last = [NSString stringWithFormat:@"%@ %@ %@", bars ? @"this week" : @"latest", fmtNum([[ys lastObject] doubleValue]), unitStr ?: @""];
+    UIFont *bf = [UIFont boldSystemFontOfSize:11]; CGSize sz = [last sizeWithFont:bf]; CGRect badge = CGRectMake(CGRectGetMaxX(plot) - sz.width - 12, 4, sz.width + 12, 16);
+    glossBar(c, badge, accent); [[UIColor whiteColor] set]; CGContextSaveGState(c); CGContextSetShadowWithColor(c, CGSizeMake(0, -1), 0, [UIColor colorWithWhite:0 alpha:0.5].CGColor);
+    [last drawInRect:CGRectMake(badge.origin.x, badge.origin.y + 1, badge.size.width, 14) withFont:bf lineBreakMode:UILineBreakModeClip alignment:UITextAlignmentCenter]; CGContextRestoreGState(c);
     double t0 = [[xs objectAtIndex:0] doubleValue], t1 = [[xs lastObject] doubleValue];
-    [fmtDay(t0) drawInRect:CGRectMake(plot.origin.x, CGRectGetMaxY(plot) + 5, plot.size.width / 2, 12) withFont:small lineBreakMode:UILineBreakModeClip alignment:UITextAlignmentLeft];
-    [(bars ? @"this week" : fmtDay(t1)) drawInRect:CGRectMake(CGRectGetMidX(plot), CGRectGetMaxY(plot) + 5, plot.size.width / 2, 12) withFont:small lineBreakMode:UILineBreakModeClip alignment:UITextAlignmentRight];
+    etched(fmtDay(t0), CGRectMake(plot.origin.x, CGRectGetMaxY(plot) + 6, plot.size.width / 2, 12), small, UITextAlignmentLeft, dim);
+    etched(bars ? @"this week" : fmtDay(t1), CGRectMake(CGRectGetMidX(plot), CGRectGetMaxY(plot) + 6, plot.size.width / 2, 12), small, UITextAlignmentRight, dim);
+    CGColorSpaceRelease(cs);
 }
 @end
 

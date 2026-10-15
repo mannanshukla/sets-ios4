@@ -1,3 +1,4 @@
+#import "LFSkin.h"
 #import "LFRoutinesViewController.h"
 #import "LFStore.h"
 #import "LFAI.h"
@@ -75,7 +76,7 @@ static NSArray *repsPresets(void) { static NSArray *r = nil; if (!r) r = [[NSArr
 - (BOOL)textFieldShouldReturn:(UITextField *)tf { [tf resignFirstResponder]; return YES; }
 - (void)addExercise {
     LFExercisesViewController *p = [[LFExercisesViewController alloc] init]; p.picker = self;
-    UINavigationController *n = [[UINavigationController alloc] initWithRootViewController:p]; n.navigationBar.tintColor = self.navigationController.navigationBar.tintColor;
+    UINavigationController *n = [[UINavigationController alloc] initWithRootViewController:p]; n.navigationBar.tintColor = self.navigationController.navigationBar.tintColor; LFSkinNavBar(n.navigationBar);
     [self presentModalViewController:n animated:YES]; [n release]; [p release];
 }
 - (void)exercisesPicker:(LFExercisesViewController *)p didPick:(NSDictionary *)e {
