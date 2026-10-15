@@ -1,5 +1,6 @@
 #import "LFSkin.h"
 #import "LFRoutinesViewController.h"
+#import "LFExercisesViewController.h"
 #import "LFStore.h"
 #import "LFAI.h"
 #import "LFWorkoutViewController.h"
@@ -102,7 +103,7 @@ static NSArray *repsPresets(void) { static NSArray *r = nil; if (!r) r = [[NSArr
     if (ip.section == 2) { c.textLabel.text = @"Start Workout"; c.textLabel.textAlignment = UITextAlignmentCenter; c.textLabel.textColor = [UIColor colorWithRed:0x5B/255.0 green:0x3F/255.0 blue:0xA6/255.0 alpha:1]; c.textLabel.font = [UIFont boldSystemFontOfSize:17]; return c; }
     if (ip.row == [exercises count]) { c.textLabel.text = @"Add Exercise..."; c.textLabel.textColor = [UIColor colorWithRed:0.22 green:0.33 blue:0.53 alpha:1]; return c; }
     NSDictionary *x = [exercises objectAtIndex:ip.row]; NSDictionary *e = [LFStore exercise:[x objectForKey:@"id"]];
-    c.selectionStyle = UITableViewCellSelectionStyleNone;
+    c.selectionStyle = UITableViewCellSelectionStyleBlue;
     c.textLabel.text = [e objectForKey:@"name"] ?: [x objectForKey:@"id"]; c.textLabel.font = [UIFont boldSystemFontOfSize:15];
     NSString *pm = [[e objectForKey:@"primary"] count] ? [[[e objectForKey:@"primary"] objectAtIndex:0] capitalizedString] : @""; NSString *eq = [e objectForKey:@"equipment"] ?: @"";
     c.detailTextLabel.text = [LFStore isStretch:e] ? [NSString stringWithFormat:@"Stretch · %@", pm] : [NSString stringWithFormat:@"%@ · %@", pm, eq]; c.detailTextLabel.font = [UIFont systemFontOfSize:12]; c.detailTextLabel.textColor = [UIColor grayColor];
@@ -117,6 +118,10 @@ static NSArray *repsPresets(void) { static NSArray *r = nil; if (!r) r = [[NSArr
     [tv deselectRowAtIndexPath:ip animated:YES];
     if (ip.section == 2) [self startWorkout];
     else if (ip.section == 1 && ip.row == (NSInteger)[exercises count]) [self addExercise];
+    else if (ip.section == 1) {   // look at the exercise; the sets button on the right is separate
+        NSDictionary *e = [LFStore exercise:[[exercises objectAtIndex:ip.row] objectForKey:@"id"]]; if (!e) return;
+        LFExerciseDetailViewController *d = [[LFExerciseDetailViewController alloc] initWithExercise:e]; [self.navigationController pushViewController:d animated:YES]; [d release];
+    }
 }
 - (BOOL)tableView:(UITableView *)tv canEditRowAtIndexPath:(NSIndexPath *)ip { return ip.section == 1 && ip.row < (NSInteger)[exercises count]; }
 - (BOOL)tableView:(UITableView *)tv canMoveRowAtIndexPath:(NSIndexPath *)ip { return ip.section == 1 && ip.row < (NSInteger)[exercises count]; }

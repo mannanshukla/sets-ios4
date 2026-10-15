@@ -17,7 +17,11 @@ static NSArray *gExercises = nil; static NSDictionary *gById = nil; static BOOL 
     for (NSDictionary *e in a) [m setObject:e forKey:[e objectForKey:@"id"]];
     gById = [m retain];
 }
-+ (BOOL)isStretch:(NSDictionary *)e { return [[e objectForKey:@"category"] isEqualToString:@"stretching"]; }
++ (BOOL)isStretch:(NSDictionary *)e {   // stretches, plus the timed holds that are logged the same way
+    if ([[e objectForKey:@"category"] isEqualToString:@"stretching"]) return YES;
+    static NSSet *timed = nil; if (!timed) timed = [[NSSet alloc] initWithObjects:@"Plank", @"One_Handed_Hang", @"Side_Plank", @"Wall_Sit", @"Dead_Hang", nil];
+    return [timed containsObject:[e objectForKey:@"id"] ?: @""];
+}
 + (void)setShowStretches:(BOOL)v { gStretch = v; }
 + (NSArray *)exercises { [self load_]; return gExercises; }
 + (NSDictionary *)exercise:(NSString *)eid { [self load_]; return [gById objectForKey:eid ?: @""]; }
