@@ -40,7 +40,12 @@ static NSArray *gExercises = nil; static NSDictionary *gById = nil; static BOOL 
     if (i >= (int)[imgs count]) return nil;
     return [[[NSBundle mainBundle] bundlePath] stringByAppendingFormat:@"/exercises/%@", [imgs objectAtIndex:i]];
 }
-+ (NSArray *)routines { return [self readJSON:@"routines.json"] ?: [NSArray array]; }
++ (NSArray *)routines {
+    NSArray *r = [self readJSON:@"routines.json"] ?: [NSArray array]; BOOL fixed = NO; NSMutableArray *out = [NSMutableArray array];
+    for (NSDictionary *x in r) { if ([[x objectForKey:@"id"] length]) { [out addObject:x]; continue; } NSMutableDictionary *m = [NSMutableDictionary dictionaryWithDictionary:x]; [m setObject:[self newId] forKey:@"id"]; [out addObject:m]; fixed = YES; }   // routines written without an id would duplicate on edit
+    if (fixed) [self writeJSON:out name:@"routines.json"];
+    return out;
+}
 + (void)saveRoutines:(NSArray *)r { [self writeJSON:r name:@"routines.json"]; }
 + (NSArray *)workouts { return [self readJSON:@"workouts.json"] ?: [NSArray array]; }
 + (void)saveWorkouts:(NSArray *)w { [self writeJSON:w name:@"workouts.json"]; }
