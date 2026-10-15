@@ -1,7 +1,7 @@
 #import "LFStore.h"
 #import "ORJSON.h"
 
-static NSArray *gExercises = nil; static NSDictionary *gById = nil; static NSArray *gMuscles = nil;
+static NSArray *gExercises = nil; static NSDictionary *gById = nil; static BOOL gStretch = NO;
 
 @implementation LFStore
 + (NSString *)docs { return [NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES) objectAtIndex:0]; }
@@ -13,21 +13,22 @@ static NSArray *gExercises = nil; static NSDictionary *gById = nil; static NSArr
     NSString *p = [[NSBundle mainBundle] pathForResource:@"exercises" ofType:@"json"];
     NSArray *a = [ORJSON parse:[NSString stringWithContentsOfFile:p encoding:NSUTF8StringEncoding error:nil]] ?: [NSArray array];
     gExercises = [a retain];
-    NSMutableDictionary *m = [NSMutableDictionary dictionary]; NSMutableArray *muscles = [NSMutableArray array];
-    for (NSDictionary *e in a) {
-        [m setObject:e forKey:[e objectForKey:@"id"]];
-        NSString *pm = [[e objectForKey:@"primary"] count] ? [[e objectForKey:@"primary"] objectAtIndex:0] : @"other";
-        if (![muscles containsObject:pm]) [muscles addObject:pm];
-    }
-    [muscles sortUsingSelector:@selector(compare:)];
-    gById = [m retain]; gMuscles = [muscles retain];
+    NSMutableDictionary *m = [NSMutableDictionary dictionary];
+    for (NSDictionary *e in a) [m setObject:e forKey:[e objectForKey:@"id"]];
+    gById = [m retain];
 }
++ (BOOL)isStretch:(NSDictionary *)e { return [[e objectForKey:@"category"] isEqualToString:@"stretching"]; }
++ (void)setShowStretches:(BOOL)v { gStretch = v; }
 + (NSArray *)exercises { [self load_]; return gExercises; }
 + (NSDictionary *)exercise:(NSString *)eid { [self load_]; return [gById objectForKey:eid ?: @""]; }
-+ (NSArray *)muscleGroups { [self load_]; return gMuscles; }
++ (NSArray *)muscleGroups {
+    [self load_]; NSMutableArray *muscles = [NSMutableArray array];
+    for (NSDictionary *e in gExercises) { if ([self isStretch:e] != gStretch) continue; NSString *pm = [[e objectForKey:@"primary"] count] ? [[e objectForKey:@"primary"] objectAtIndex:0] : @"other"; if (![muscles containsObject:pm]) [muscles addObject:pm]; }
+    [muscles sortUsingSelector:@selector(compare:)]; return muscles;
+}
 + (NSArray *)exercisesForMuscle:(NSString *)mu {
     NSMutableArray *r = [NSMutableArray array];
-    for (NSDictionary *e in [self exercises]) { NSArray *p = [e objectForKey:@"primary"]; if ([p count] && [[p objectAtIndex:0] isEqualToString:mu]) [r addObject:e]; }
+    for (NSDictionary *e in [self exercises]) { if ([self isStretch:e] != gStretch) continue; NSArray *p = [e objectForKey:@"primary"]; NSString *pm = [p count] ? [p objectAtIndex:0] : @"other"; if ([pm isEqualToString:mu]) [r addObject:e]; }
     return r;
 }
 + (NSString *)imagePath:(NSString *)eid frame:(int)i {
@@ -115,7 +116,7 @@ static NSArray *gExercises = nil; static NSDictionary *gById = nil; static NSArr
     for (NSDictionary *w in [self workouts]) for (NSDictionary *ex in [w objectForKey:@"exercises"]) {
         BOOL any = NO; for (NSDictionary *s in [ex objectForKey:@"sets"]) if ([[s objectForKey:@"done"] boolValue]) { any = YES; break; }
         if (!any) continue;
-        NSString *k = [ex objectForKey:@"id"]; if (![self exercise:k]) continue;
+        NSString *k = [ex objectForKey:@"id"]; if (![self exercise:k] || [self isStretch:[self exercise:k]]) continue;   // stretches have no weight to chart
         [count setObject:[NSNumber numberWithInt:[[count objectForKey:k] intValue] + 1] forKey:k];
     }
     NSMutableArray *ids = [NSMutableArray arrayWithArray:[count allKeys]];

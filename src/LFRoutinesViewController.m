@@ -39,6 +39,7 @@
 }
 @end
 
+static NSArray *holdPresets(void) { static NSArray *h = nil; if (!h) h = [[NSArray arrayWithObjects:@"15s", @"20s", @"30s", @"45s", @"60s", @"90s", nil] retain]; return h; }
 static NSArray *repsPresets(void) { static NSArray *r = nil; if (!r) r = [[NSArray arrayWithObjects:@"3", @"5", @"6", @"8", @"10", @"12", @"15", @"20", @"5-8", @"6-10", @"8-12", @"10-15", @"12-20", @"AMRAP", nil] retain]; return r; }
 
 @implementation LFRoutineEditViewController
@@ -141,7 +142,7 @@ static NSArray *repsPresets(void) { static NSArray *r = nil; if (!r) r = [[NSArr
     drumTitle.text = [[LFStore exercise:[x objectForKey:@"id"]] objectForKey:@"name"] ?: @"Sets × reps";
     [picker reloadAllComponents];
     [picker selectRow:MAX(0, MIN(9, [[x objectForKey:@"sets"] integerValue] - 1)) inComponent:0 animated:NO];
-    NSInteger ri = [repsPresets() indexOfObject:[x objectForKey:@"reps"]]; [picker selectRow:ri == NSNotFound ? 10 : ri inComponent:1 animated:NO];
+    NSArray *pr = [self presetsAt:pickRow]; NSInteger ri = [pr indexOfObject:[x objectForKey:@"reps"]]; [picker selectRow:ri == NSNotFound ? (pr == holdPresets() ? 2 : 10) : ri inComponent:1 animated:NO];
     CGRect b2 = drum.superview.bounds; [drum.superview bringSubviewToFront:drum];
     [UIView beginAnimations:nil context:NULL]; [UIView setAnimationDuration:0.3]; drum.frame = CGRectMake(0, b2.size.height - 260, b2.size.width, 260); [UIView commitAnimations];
     self.tableView.contentInset = UIEdgeInsetsMake(0, 0, 260 - 49, 0);
@@ -152,14 +153,15 @@ static NSArray *repsPresets(void) { static NSArray *r = nil; if (!r) r = [[NSArr
     [UIView beginAnimations:nil context:NULL]; [UIView setAnimationDuration:0.3]; drum.frame = CGRectMake(0, b2.size.height, b2.size.width, 260); [UIView commitAnimations];
     self.tableView.contentInset = UIEdgeInsetsZero;
 }
+- (NSArray *)presetsAt:(NSInteger)row { if (row < 0 || row >= (NSInteger)[exercises count]) return repsPresets(); return [LFStore isStretch:[LFStore exercise:[[exercises objectAtIndex:row] objectForKey:@"id"]]] ? holdPresets() : repsPresets(); }
 - (NSInteger)numberOfComponentsInPickerView:(UIPickerView *)pv { return 2; }
-- (NSInteger)pickerView:(UIPickerView *)pv numberOfRowsInComponent:(NSInteger)c { return c == 0 ? 10 : [repsPresets() count]; }
-- (NSString *)pickerView:(UIPickerView *)pv titleForRow:(NSInteger)row forComponent:(NSInteger)c { return c == 0 ? [NSString stringWithFormat:@"%ld set%@", (long)row + 1, row ? @"s" : @""] : [NSString stringWithFormat:@"%@ reps", [repsPresets() objectAtIndex:row]]; }
+- (NSInteger)pickerView:(UIPickerView *)pv numberOfRowsInComponent:(NSInteger)c { return c == 0 ? 10 : [[self presetsAt:pickRow] count]; }
+- (NSString *)pickerView:(UIPickerView *)pv titleForRow:(NSInteger)row forComponent:(NSInteger)c { return c == 0 ? [NSString stringWithFormat:@"%ld set%@", (long)row + 1, row ? @"s" : @""] : ([self presetsAt:pickRow] == holdPresets() ? [NSString stringWithFormat:@"hold %@", [holdPresets() objectAtIndex:row]] : [NSString stringWithFormat:@"%@ reps", [repsPresets() objectAtIndex:row]]); }
 - (CGFloat)pickerView:(UIPickerView *)pv widthForComponent:(NSInteger)c { return c == 0 ? 130 : 160; }
 - (void)pickerView:(UIPickerView *)pv didSelectRow:(NSInteger)row inComponent:(NSInteger)c {
     if (pickRow < 0 || pickRow >= (NSInteger)[exercises count]) return;
     NSMutableDictionary *x = [NSMutableDictionary dictionaryWithDictionary:[exercises objectAtIndex:pickRow]];
-    if (c == 0) [x setObject:[NSNumber numberWithInteger:row + 1] forKey:@"sets"]; else [x setObject:[repsPresets() objectAtIndex:row] forKey:@"reps"];
+    if (c == 0) [x setObject:[NSNumber numberWithInteger:row + 1] forKey:@"sets"]; else [x setObject:[[self presetsAt:pickRow] objectAtIndex:row] forKey:@"reps"];
     [exercises replaceObjectAtIndex:pickRow withObject:x];
     [self.tableView reloadRowsAtIndexPaths:[NSArray arrayWithObject:[NSIndexPath indexPathForRow:pickRow inSection:1]] withRowAnimation:UITableViewRowAnimationNone];
 }

@@ -3,7 +3,9 @@
 @interface LFStore : NSObject
 + (NSArray *)exercises;                              // bundled, sorted by name: {id, name, equipment, primary[], secondary[], level, instructions[], images[]}
 + (NSDictionary *)exercise:(NSString *)eid;
-+ (NSArray *)muscleGroups;                           // ordered list of primary muscle names present
++ (NSArray *)muscleGroups;                           // ordered list of primary muscle names present (for the current category)
++ (BOOL)isStretch:(NSDictionary *)e;                 // category "stretching"
++ (void)setShowStretches:(BOOL)v;                    // muscleGroups / exercisesForMuscle list stretches instead of lifts
 + (NSArray *)exercisesForMuscle:(NSString *)m;
 + (NSString *)imagePath:(NSString *)eid frame:(int)i;
 

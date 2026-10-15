@@ -5,10 +5,12 @@
 @implementation LFExercisesViewController
 @synthesize picker;
 - (id)init {
-    if ((self = [super initWithStyle:UITableViewStylePlain])) { self.title = @"Exercises"; self.tabBarItem.title = @"Exercises"; groups = [[LFStore muscleGroups] retain]; rows = [[NSMutableArray alloc] init]; [self rebuild]; }
+    if ((self = [super initWithStyle:UITableViewStylePlain])) { self.title = @"Exercises"; self.tabBarItem.title = @"Exercises"; groups = [[LFStore muscleGroups] retain]; rows = [[NSMutableArray alloc] init]; [self rebuild];
+        UISegmentedControl *seg = [[[UISegmentedControl alloc] initWithItems:[NSArray arrayWithObjects:@"Lifts", @"Stretches", nil]] autorelease]; seg.segmentedControlStyle = UISegmentedControlStyleBar; seg.selectedSegmentIndex = 0; [seg addTarget:self action:@selector(kindChanged:) forControlEvents:UIControlEventValueChanged]; self.navigationItem.titleView = seg; }
     return self;
 }
 - (void)dealloc { [groups release]; [rows release]; [search release]; [query release]; [super dealloc]; }
+- (void)kindChanged:(UISegmentedControl *)seg { [LFStore setShowStretches:seg.selectedSegmentIndex == 1]; [groups release]; groups = [[LFStore muscleGroups] retain]; [self rebuild]; [self.tableView reloadData]; if ([self.tableView numberOfSections]) [self.tableView scrollRectToVisible:CGRectMake(0, 0, 1, 1) animated:NO]; }
 - (void)rebuild {
     [rows removeAllObjects];
     for (NSString *g in groups) {

@@ -1,6 +1,6 @@
 # Sets
 
-A stripped-down workout log for iPod touch 4. Local only. 242 exercises with photos from free-exercise-db, a ratchet wheel for weight and reps, rest timer, body weight and estimated one-rep-max charts, and routines written by OpenRelay from a goal.
+A stripped-down workout log for iPod touch 4. Local only. 365 exercises with photos from free-exercise-db, 123 of them stretches logged as a hold time, a ratchet wheel for weight and reps, rest timer, body weight and estimated one-rep-max charts, and routines written by OpenRelay from a goal.
 
 ## Layout
 

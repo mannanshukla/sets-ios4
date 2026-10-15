@@ -5,6 +5,8 @@
 
 static NSString *fmtTime(NSTimeInterval t) { int s = (int)t; return s >= 3600 ? [NSString stringWithFormat:@"%d:%02d:%02d", s/3600, (s/60)%60, s%60] : [NSString stringWithFormat:@"%d:%02d", s/60, s%60]; }
 static NSString *unit(void) { return [LFStore useKg] ? @"kg" : @"lb"; }
+static BOOL stretchEx(NSDictionary *ex) { return [LFStore isStretch:[LFStore exercise:[ex objectForKey:@"id"]]]; }
+#define HOLD_ROWS 37   /* 0 .. 180 s in 5s */
 static double weightStep(void) { return [LFStore useKg] ? 1.0 : 2.5; }
 #define WEIGHT_ROWS 241   /* 0 .. 600 lb in 2.5s, or 0 .. 240 kg in 1s */
 #define REPS_ROWS 51
@@ -142,6 +144,8 @@ static double weightStep(void) { return [LFStore useKg] ? 1.0 : 2.5; }
     NSString *nm = [e objectForKey:@"name"] ?: @"";
     NSRange dash = [nm rangeOfString:@" - "]; if (dash.location != NSNotFound) nm = [nm substringToIndex:dash.location];
     drumTitle.text = [NSString stringWithFormat:@"Set %ld · %@", (long)pickRow + 1, nm];
+    [picker reloadAllComponents];
+    if (stretchEx([exercises objectAtIndex:pickSection])) { [picker selectRow:MIN(HOLD_ROWS-1, MAX(0, [[s objectForKey:@"reps"] intValue] / 5)) inComponent:0 animated:NO]; return; }
     NSInteger wrow = (NSInteger)([[s objectForKey:@"weight"] doubleValue] / weightStep() + 0.5);
     [picker selectRow:MIN(WEIGHT_ROWS-1, MAX(0, wrow)) inComponent:0 animated:NO];
     [picker selectRow:MIN(REPS_ROWS-1, MAX(0, [[s objectForKey:@"reps"] intValue])) inComponent:1 animated:NO];
@@ -179,16 +183,19 @@ static double weightStep(void) { return [LFStore useKg] ? 1.0 : 2.5; }
     [self syncDrumToSet];
     [self.tableView scrollToRowAtIndexPath:[NSIndexPath indexPathForRow:pickRow inSection:pickSection] atScrollPosition:UITableViewScrollPositionMiddle animated:YES];
 }
-- (NSInteger)numberOfComponentsInPickerView:(UIPickerView *)pv { return 2; }
-- (NSInteger)pickerView:(UIPickerView *)pv numberOfRowsInComponent:(NSInteger)c { return c == 0 ? WEIGHT_ROWS : REPS_ROWS; }
+- (BOOL)pickingStretch { return pickSection >= 0 && pickSection < (NSInteger)[exercises count] && stretchEx([exercises objectAtIndex:pickSection]); }
+- (NSInteger)numberOfComponentsInPickerView:(UIPickerView *)pv { return [self pickingStretch] ? 1 : 2; }
+- (NSInteger)pickerView:(UIPickerView *)pv numberOfRowsInComponent:(NSInteger)c { if ([self pickingStretch]) return HOLD_ROWS; return c == 0 ? WEIGHT_ROWS : REPS_ROWS; }
 - (NSString *)pickerView:(UIPickerView *)pv titleForRow:(NSInteger)row forComponent:(NSInteger)c {
+    if ([self pickingStretch]) return [NSString stringWithFormat:@"hold %ld s", (long)row * 5];
     return c == 0 ? [NSString stringWithFormat:@"%g %@", row * weightStep(), unit()] : [NSString stringWithFormat:@"%ld reps", (long)row];
 }
-- (CGFloat)pickerView:(UIPickerView *)pv widthForComponent:(NSInteger)c { return c == 0 ? 170 : 120; }
+- (CGFloat)pickerView:(UIPickerView *)pv widthForComponent:(NSInteger)c { if ([self pickingStretch]) return 220; return c == 0 ? 170 : 120; }
 - (void)pickerView:(UIPickerView *)pv didSelectRow:(NSInteger)row inComponent:(NSInteger)c {
     NSMutableArray *sets = [self setsAt:pickSection]; if (pickRow >= (NSInteger)[sets count]) return;
     NSMutableDictionary *s = [NSMutableDictionary dictionaryWithDictionary:[sets objectAtIndex:pickRow]];
-    if (c == 0) [s setObject:[NSNumber numberWithDouble:row * weightStep()] forKey:@"weight"]; else [s setObject:[NSNumber numberWithInt:(int)row] forKey:@"reps"];
+    if ([self pickingStretch]) { [s setObject:[NSNumber numberWithDouble:0] forKey:@"weight"]; [s setObject:[NSNumber numberWithInt:(int)row * 5] forKey:@"reps"]; }   // a hold is stored as reps = seconds
+    else if (c == 0) [s setObject:[NSNumber numberWithDouble:row * weightStep()] forKey:@"weight"]; else [s setObject:[NSNumber numberWithInt:(int)row] forKey:@"reps"];
     [sets replaceObjectAtIndex:pickRow withObject:s]; [self replaceSets:sets at:pickSection];
     [self.tableView reloadRowsAtIndexPaths:[NSArray arrayWithObject:[NSIndexPath indexPathForRow:pickRow inSection:pickSection]] withRowAnimation:UITableViewRowAnimationNone];
 }
@@ -204,7 +211,7 @@ static double weightStep(void) { return [LFStore useKg] ? 1.0 : 2.5; }
     if (s >= (NSInteger)[exercises count]) return nil;
     NSDictionary *ex = [exercises objectAtIndex:s]; NSDictionary *e = [LFStore exercise:[ex objectForKey:@"id"]];
     NSString *t = [ex objectForKey:@"target"];
-    return [t length] ? [NSString stringWithFormat:@"%@  (%@ reps)", [e objectForKey:@"name"], t] : [e objectForKey:@"name"];
+    return [t length] ? [NSString stringWithFormat:(stretchEx(ex) ? @"%@  (hold %@)" : @"%@  (%@ reps)"), [e objectForKey:@"name"], t] : [e objectForKey:@"name"];
 }
 - (CGFloat)tableView:(UITableView *)tv heightForHeaderInSection:(NSInteger)s {
     NSString *t = [self tableView:tv titleForHeaderInSection:s]; if (![t length]) return 10;
@@ -246,9 +253,11 @@ static double weightStep(void) { return [LFStore useKg] ? 1.0 : 2.5; }
     UIButton *wt = [UIButton buttonWithType:UIButtonTypeCustom]; wt.frame = CGRectMake(w - 190, 7, 66, 30);
     UIButton *rp = [UIButton buttonWithType:UIButtonTypeCustom]; rp.frame = CGRectMake(w - 118, 7, 54, 30);
     double wv = [[s objectForKey:@"weight"] doubleValue]; int rv = [[s objectForKey:@"reps"] intValue];
+    BOOL hold = stretchEx([exercises objectAtIndex:ip.section]);
+    if (hold) { rp.frame = CGRectMake(w - 190, 7, 126, 30); wv = 1; }   // stretches: one wide "hold" box, no weight
     [wt setTitle:(wv > 0 ? [NSString stringWithFormat:@"%g", wv] : unit()) forState:UIControlStateNormal];
-    [rp setTitle:(rv > 0 ? [NSString stringWithFormat:@"%d", rv] : @"reps") forState:UIControlStateNormal];
-    for (UIButton *b in [NSArray arrayWithObjects:wt, rp, nil]) {
+    [rp setTitle:(rv > 0 ? (hold ? [NSString stringWithFormat:@"hold %d s", rv] : [NSString stringWithFormat:@"%d", rv]) : (hold ? @"hold" : @"reps")) forState:UIControlStateNormal];
+    for (UIButton *b in (hold ? [NSArray arrayWithObject:rp] : [NSArray arrayWithObjects:wt, rp, nil])) {
         BOOL placeholder = (b == wt) ? wv <= 0 : rv <= 0;
         b.titleLabel.font = [UIFont systemFontOfSize:16];
         [b setTitleColor:(placeholder ? [UIColor colorWithWhite:0.6 alpha:1] : [UIColor blackColor]) forState:UIControlStateNormal];
@@ -324,7 +333,8 @@ static double weightStep(void) { return [LFStore useKg] ? 1.0 : 2.5; }
     c.selectionStyle = UITableViewCellSelectionStyleNone;
     NSDictionary *s = [[[[workout objectForKey:@"exercises"] objectAtIndex:ip.section] objectForKey:@"sets"] objectAtIndex:ip.row];
     c.textLabel.text = [NSString stringWithFormat:@"Set %ld", (long)ip.row + 1];
-    c.detailTextLabel.text = [NSString stringWithFormat:@"%g %@ × %d", [[s objectForKey:@"weight"] doubleValue], unit(), [[s objectForKey:@"reps"] intValue]];
+    if (stretchEx([[workout objectForKey:@"exercises"] objectAtIndex:ip.section])) c.detailTextLabel.text = [NSString stringWithFormat:@"hold %d s", [[s objectForKey:@"reps"] intValue]];
+    else c.detailTextLabel.text = [NSString stringWithFormat:@"%g %@ × %d", [[s objectForKey:@"weight"] doubleValue], unit(), [[s objectForKey:@"reps"] intValue]];
     return c;
 }
 @end
