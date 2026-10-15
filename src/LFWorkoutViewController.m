@@ -258,7 +258,8 @@ static double weightStep(void) { return [LFStore useKg] ? 1.0 : 2.5; }
     double wv = [[s objectForKey:@"weight"] doubleValue]; int rv = [[s objectForKey:@"reps"] intValue];
     BOOL hold = stretchEx([exercises objectAtIndex:ip.section]);
     if (hold) { rp.frame = CGRectMake(w - 190, 7, 126, 30); wv = 1; }   // stretches: one wide "hold" box, no weight
-    [wt setTitle:(wv > 0 ? [NSString stringWithFormat:@"%g", wv] : unit()) forState:UIControlStateNormal];
+    BOOL bodyOnly = [[[LFStore exercise:[[exercises objectAtIndex:ip.section] objectForKey:@"id"]] objectForKey:@"equipment"] isEqualToString:@"body only"];
+    [wt setTitle:(wv > 0 ? [NSString stringWithFormat:@"%g", wv] : (bodyOnly ? @"bw" : unit())) forState:UIControlStateNormal];   // bodyweight moves: "bw" until you add weight
     [rp setTitle:(rv > 0 ? (hold ? [NSString stringWithFormat:@"hold %d s", rv] : [NSString stringWithFormat:@"%d", rv]) : (hold ? @"hold" : @"reps")) forState:UIControlStateNormal];
     for (UIButton *b in (hold ? [NSArray arrayWithObject:rp] : [NSArray arrayWithObjects:wt, rp, nil])) {
         BOOL placeholder = (b == wt) ? wv <= 0 : rv <= 0;
