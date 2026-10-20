@@ -116,7 +116,7 @@ static double weightStep(void) { return [LFStore useKg] ? 1.0 : 2.5; }
     [s setObject:[NSNumber numberWithBool:done] forKey:@"done"];
     [sets replaceObjectAtIndex:row withObject:s]; [self replaceSets:sets at:sec];
     if (done) [self startRest];
-    [self.tableView reloadData];
+    [self.tableView reloadRowsAtIndexPaths:[NSArray arrayWithObject:[NSIndexPath indexPathForRow:row inSection:sec]] withRowAnimation:UITableViewRowAnimationNone];   // only this row changed; a full reload rebuilds every visible cell
 }
 
 #pragma mark drum picker
@@ -182,7 +182,7 @@ static double weightStep(void) { return [LFStore useKg] ? 1.0 : 2.5; }
     if (pickRow + 1 >= (NSInteger)[sets count]) {
         NSDictionary *last = [sets lastObject];
         [sets addObject:[NSDictionary dictionaryWithObjectsAndKeys:([last objectForKey:@"weight"] ?: [NSNumber numberWithInt:0]), @"weight", ([last objectForKey:@"reps"] ?: [NSNumber numberWithInt:0]), @"reps", [NSNumber numberWithBool:NO], @"done", nil]];
-        [self replaceSets:sets at:pickSection]; [self.tableView reloadData];
+        [self replaceSets:sets at:pickSection]; [self.tableView insertRowsAtIndexPaths:[NSArray arrayWithObject:[NSIndexPath indexPathForRow:[sets count] - 1 inSection:pickSection]] withRowAnimation:UITableViewRowAnimationNone];
     }
     pickRow++;
     [self syncDrumToSet];
@@ -289,7 +289,7 @@ static double weightStep(void) { return [LFStore useKg] ? 1.0 : 2.5; }
     if (ip.row == (NSInteger)[sets count]) {
         NSDictionary *last = [sets lastObject];
         [sets addObject:[NSDictionary dictionaryWithObjectsAndKeys:([last objectForKey:@"weight"] ?: [NSNumber numberWithInt:0]), @"weight", ([last objectForKey:@"reps"] ?: [NSNumber numberWithInt:0]), @"reps", [NSNumber numberWithBool:NO], @"done", nil]];
-        [self replaceSets:sets at:ip.section]; [tv reloadData];
+        [self replaceSets:sets at:ip.section]; [tv insertRowsAtIndexPaths:[NSArray arrayWithObject:[NSIndexPath indexPathForRow:[sets count] - 1 inSection:ip.section]] withRowAnimation:UITableViewRowAnimationNone];
     }
 }
 - (BOOL)tableView:(UITableView *)tv canEditRowAtIndexPath:(NSIndexPath *)ip { return active && ip.section < (NSInteger)[exercises count] && ip.row < (NSInteger)[[[exercises objectAtIndex:ip.section] objectForKey:@"sets"] count]; }

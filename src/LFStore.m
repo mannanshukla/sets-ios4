@@ -2,6 +2,7 @@
 #import "ORJSON.h"
 
 static NSArray *gExercises = nil; static NSDictionary *gById = nil; static BOOL gStretch = NO;
+static NSArray *gWorkouts = nil;   // parsed history, kept until the next save; the stats below read it many times per screen
 
 @implementation LFStore
 + (NSString *)docs { return [NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES) objectAtIndex:0]; }
@@ -47,8 +48,8 @@ static NSArray *gExercises = nil; static NSDictionary *gById = nil; static BOOL 
     return out;
 }
 + (void)saveRoutines:(NSArray *)r { [self writeJSON:r name:@"routines.json"]; }
-+ (NSArray *)workouts { return [self readJSON:@"workouts.json"] ?: [NSArray array]; }
-+ (void)saveWorkouts:(NSArray *)w { [self writeJSON:w name:@"workouts.json"]; }
++ (NSArray *)workouts { if (!gWorkouts) gWorkouts = [([self readJSON:@"workouts.json"] ?: [NSArray array]) retain]; return gWorkouts; }
++ (void)saveWorkouts:(NSArray *)w { [self writeJSON:w name:@"workouts.json"]; [gWorkouts release]; gWorkouts = nil; }
 + (NSDictionary *)activeWorkout { id a = [self readJSON:@"active.json"]; return [a isKindOfClass:[NSDictionary class]] ? a : nil; }
 + (void)saveActiveWorkout:(NSDictionary *)w {
     NSString *p = [[self docs] stringByAppendingPathComponent:@"active.json"];
