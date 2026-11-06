@@ -25,7 +25,7 @@ static double weightStep(void) { return [LFStore useKg] ? 1.0 : 2.5; }
             [sets addObject:[NSDictionary dictionaryWithObjectsAndKeys:[NSNumber numberWithDouble:best ? [[best objectForKey:@"weight"] doubleValue] : 0], @"weight", [NSNumber numberWithInt:0], @"reps", [NSNumber numberWithBool:NO], @"done", nil]];
         [exs addObject:[NSDictionary dictionaryWithObjectsAndKeys:[x objectForKey:@"id"], @"id", sets, @"sets", ([x objectForKey:@"reps"] ?: @""), @"target", nil]];
     }
-    NSDictionary *w = [NSDictionary dictionaryWithObjectsAndKeys:[LFStore newId], @"id", ([routine objectForKey:@"name"] ?: @"Workout"), @"name", [NSNumber numberWithDouble:[[NSDate date] timeIntervalSince1970]], @"start", exs, @"exercises", nil];
+    NSDictionary *w = [NSDictionary dictionaryWithObjectsAndKeys:[LFStore uniqueId], @"id", ([routine objectForKey:@"name"] ?: @"Workout"), @"name", [NSNumber numberWithDouble:[[NSDate date] timeIntervalSince1970]], @"start", exs, @"exercises", nil];
     [LFStore saveActiveWorkout:w];
 }
 + (void)startEmpty { [self startFromRoutine:[NSDictionary dictionaryWithObjectsAndKeys:@"Workout", @"name", [NSArray array], @"exercises", nil]]; }

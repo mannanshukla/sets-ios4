@@ -1,3 +1,5 @@
+#import "LFAI.h"
+#import "CLCoachViewController.h"
 #import "LFSkin.h"
 #import "LFProgressViewController.h"
 #import "LFStore.h"
@@ -140,7 +142,8 @@ static UITableViewCell *valueCell(UITableView *tv, NSString *t, NSString *d) {
 }
 
 @implementation LFProgressViewController
-- (id)init { if ((self = [super initWithStyle:UITableViewStyleGrouped])) { self.title = @"Progress"; self.tabBarItem.title = @"Progress"; } return self; }
+- (void)coach { CLCoachViewController *c=[[[CLCoachViewController alloc] initWithSource:@"Sets" context:[LFAI summary] system:[LFAI reviewSystem]] autorelease];[self.navigationController pushViewController:c animated:YES]; }
+- (id)init { if ((self = [super initWithStyle:UITableViewStyleGrouped])) { self.title = @"Progress"; self.tabBarItem.title = @"Progress";self.navigationItem.rightBarButtonItem=[[[UIBarButtonItem alloc] initWithTitle:@"Coach" style:UIBarButtonItemStyleBordered target:self action:@selector(coach)] autorelease]; } return self; }
 - (void)dealloc { [weights release]; [weekly release]; [exerciseIds release]; [weightChart release]; [volumeChart release]; [super dealloc]; }
 - (void)viewWillAppear:(BOOL)a {
     [super viewWillAppear:a];

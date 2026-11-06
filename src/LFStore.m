@@ -43,11 +43,11 @@ static NSArray *gWorkouts = nil;   // parsed history, kept until the next save; 
 }
 + (NSArray *)routines {
     NSArray *r = [self readJSON:@"routines.json"] ?: [NSArray array]; BOOL fixed = NO; NSMutableArray *out = [NSMutableArray array];
-    for (NSDictionary *x in r) { if ([[x objectForKey:@"id"] length]) { [out addObject:x]; continue; } NSMutableDictionary *m = [NSMutableDictionary dictionaryWithDictionary:x]; [m setObject:[self newId] forKey:@"id"]; [out addObject:m]; fixed = YES; }   // routines written without an id would duplicate on edit
+    for (NSDictionary *x in r) { if ([[x objectForKey:@"id"] length]) { [out addObject:x]; continue; } NSMutableDictionary *m = [NSMutableDictionary dictionaryWithDictionary:x]; [m setObject:[self uniqueId] forKey:@"id"]; [out addObject:m]; fixed = YES; }   // routines written without an id would duplicate on edit
     if (fixed) [self writeJSON:out name:@"routines.json"];
     return out;
 }
-+ (void)saveRoutines:(NSArray *)r { [self writeJSON:r name:@"routines.json"]; }
++ (BOOL)saveRoutines:(NSArray *)r { return [[ORJSON stringify:r] writeToFile:[[self docs] stringByAppendingPathComponent:@"routines.json"] atomically:YES encoding:NSUTF8StringEncoding error:NULL]; }
 + (NSArray *)workouts { if (!gWorkouts) gWorkouts = [([self readJSON:@"workouts.json"] ?: [NSArray array]) retain]; return gWorkouts; }
 + (void)saveWorkouts:(NSArray *)w { [self writeJSON:w name:@"workouts.json"]; [gWorkouts release]; gWorkouts = nil; }
 + (NSDictionary *)activeWorkout { id a = [self readJSON:@"active.json"]; return [a isKindOfClass:[NSDictionary class]] ? a : nil; }
@@ -55,7 +55,7 @@ static NSArray *gWorkouts = nil;   // parsed history, kept until the next save; 
     NSString *p = [[self docs] stringByAppendingPathComponent:@"active.json"];
     if (w) [self writeJSON:w name:@"active.json"]; else [[NSFileManager defaultManager] removeItemAtPath:p error:nil];
 }
-+ (NSString *)newId { CFUUIDRef u = CFUUIDCreate(NULL); NSString *s = [(NSString *)CFUUIDCreateString(NULL, u) autorelease]; CFRelease(u); return s; }
++ (NSString *)uniqueId { CFUUIDRef u = CFUUIDCreate(NULL); NSString *s = [(NSString *)CFUUIDCreateString(NULL, u) autorelease]; CFRelease(u); return s; }
 + (NSUserDefaults *)d { return [NSUserDefaults standardUserDefaults]; }
 + (NSString *)apiKey { return [[self d] stringForKey:@"lf_api_key"] ?: @""; }
 + (void)setApiKey:(NSString *)k { [[self d] setObject:k forKey:@"lf_api_key"]; [[self d] synchronize]; }
@@ -126,7 +126,7 @@ static NSArray *gWorkouts = nil;   // parsed history, kept until the next save; 
     for (NSDictionary *w in [self workouts]) for (NSDictionary *ex in [w objectForKey:@"exercises"]) {
         BOOL any = NO; for (NSDictionary *s in [ex objectForKey:@"sets"]) if ([[s objectForKey:@"done"] boolValue]) { any = YES; break; }
         if (!any) continue;
-        NSString *k = [ex objectForKey:@"id"]; if (![self exercise:k] || [self isStretch:[self exercise:k]]) continue;   // stretches have no weight to chart
+        NSString *k = [ex objectForKey:@"id"]; if (![k isKindOfClass:[NSString class]] || ![k length]) continue; if (![self exercise:k] || [self isStretch:[self exercise:k]]) continue;   // stretches have no weight to chart
         [count setObject:[NSNumber numberWithInt:[[count objectForKey:k] intValue] + 1] forKey:k];
     }
     NSMutableArray *ids = [NSMutableArray arrayWithArray:[count allKeys]];

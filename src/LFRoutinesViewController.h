@@ -1,5 +1,6 @@
 #import <UIKit/UIKit.h>
 #import "LFExercisesViewController.h"
+#import "CLAIRequest.h"
 @interface LFRoutinesViewController : UITableViewController { NSMutableArray *routines; }
 - (void)reload;
 @end
@@ -9,7 +10,11 @@
 }
 - (id)initWithRoutine:(NSDictionary *)r;
 @end
-@interface LFGenerateViewController : UITableViewController <UITextFieldDelegate> {
-    UISegmentedControl *goal, *level, *equipment; UISlider *days, *minutes; UILabel *daysLabel, *minutesLabel; BOOL busy; NSString *status;
+@interface LFGenerateViewController : UITableViewController <UITextFieldDelegate,CLAIRequestDelegate> {
+    UISegmentedControl *goal, *level, *equipment; UISlider *days, *minutes; UILabel *daysLabel, *minutesLabel; CLAIRequest *request; NSDictionary *pendingOptions; NSString *status;
  UITextField *notes;}
+@end
+
+@interface LFPlanPreviewController : UITableViewController { NSArray *proposed;NSMutableIndexSet *chosen; }
+- (id)initWithRoutines:(NSArray *)routines;
 @end

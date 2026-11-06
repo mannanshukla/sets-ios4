@@ -9,10 +9,10 @@
 + (NSArray *)exercisesForMuscle:(NSString *)m;
 + (NSString *)imagePath:(NSString *)eid frame:(int)i;
 
-+ (NSArray *)routines;     + (void)saveRoutines:(NSArray *)r;    // {id, name, exercises:[{id, sets, reps}]}
++ (NSArray *)routines;     + (BOOL)saveRoutines:(NSArray *)r;    // {id, name, exercises:[{id, sets, reps}]}
 + (NSArray *)workouts;     + (void)saveWorkouts:(NSArray *)w;    // {id, name, start, end, exercises:[{id, sets:[{weight, reps, done}]}]}
 + (NSDictionary *)activeWorkout; + (void)saveActiveWorkout:(NSDictionary *)w;   // nil clears
-+ (NSString *)newId;
++ (NSString *)uniqueId;
 + (NSString *)apiKey; + (void)setApiKey:(NSString *)k;
 + (NSInteger)restSeconds; + (void)setRestSeconds:(NSInteger)s;
 + (BOOL)useKg; + (void)setUseKg:(BOOL)v;
