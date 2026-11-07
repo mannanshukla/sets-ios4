@@ -7,3 +7,5 @@ test-build/core
 
 clang -fno-objc-arc -O2 -Wall -Wno-deprecated-declarations -Wno-incompatible-pointer-types -Isrc tests/search.m src/LFSearch.m src/LFStore.m src/ORJSON.m -framework Foundation -o test-build/search
 test-build/search
+clang -fno-objc-arc -O2 -Wall -Wno-deprecated-declarations -Wno-incompatible-pointer-types -Isrc tests/custom.m src/LFSearch.m src/LFStore.m src/ORJSON.m -framework Foundation -o test-build/custom
+test-build/custom

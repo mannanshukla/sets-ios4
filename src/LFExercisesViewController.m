@@ -3,15 +3,16 @@
 #import "LFExercisesViewController.h"
 #import "LFStore.h"
 #import "LFSearch.h"
+#import "LFCustomExercise.h"
 
 @implementation LFExercisesViewController
 @synthesize picker;
 - (id)init {
-    if ((self = [super initWithStyle:UITableViewStylePlain])) { self.title = @"Exercises"; self.tabBarItem.title = @"Exercises"; searchIndex=[[LFSearch alloc] initWithExercises:[LFStore exercises]]; rows = [[NSMutableArray alloc] init]; [self rebuild];
+    if ((self = [super initWithStyle:UITableViewStylePlain])) { self.title = @"Exercises"; self.tabBarItem.title = @"Exercises"; indexedExercises=[[LFStore exercises] retain];searchIndex=[[LFSearch alloc] initWithExercises:indexedExercises]; rows = [[NSMutableArray alloc] init]; [self rebuild];
         UISegmentedControl *seg = [[[UISegmentedControl alloc] initWithItems:[NSArray arrayWithObjects:@"All", @"Lifts", @"Stretches", nil]] autorelease]; seg.segmentedControlStyle = UISegmentedControlStyleBar; seg.selectedSegmentIndex = 0; [seg addTarget:self action:@selector(kindChanged:) forControlEvents:UIControlEventValueChanged]; self.navigationItem.titleView = seg; }
     return self;
 }
-- (void)dealloc { [NSObject cancelPreviousPerformRequestsWithTarget:self];search.delegate=nil;[searchIndex release];[groups release];[rows release];[search release];[query release];[super dealloc]; }
+- (void)dealloc { [NSObject cancelPreviousPerformRequestsWithTarget:self];search.delegate=nil;[searchIndex release];[indexedExercises release];[groups release];[rows release];[search release];[query release];[super dealloc]; }
 - (void)kindChanged:(UISegmentedControl *)seg { kind=seg.selectedSegmentIndex;[self updateResults]; }
 - (void)rebuild {
     NSArray *found=[searchIndex resultsForQuery:query kind:kind];[rows removeAllObjects];[groups release];
@@ -20,16 +21,18 @@
 }
 - (void)updateResults { [NSObject cancelPreviousPerformRequestsWithTarget:self selector:@selector(updateResults) object:nil];[self rebuild];[self.tableView reloadData]; }
 - (void)viewWillDisappear:(BOOL)a { [NSObject cancelPreviousPerformRequestsWithTarget:self];[search resignFirstResponder];[super viewWillDisappear:a]; }
-- (void)viewWillAppear:(BOOL)a { [super viewWillAppear:a];[self updateResults]; }
+- (void)viewWillAppear:(BOOL)a { [super viewWillAppear:a];NSArray *current=[LFStore exercises];if(current!=indexedExercises) { [indexedExercises release];indexedExercises=[current retain];[searchIndex release];searchIndex=[[LFSearch alloc] initWithExercises:indexedExercises]; }[self updateResults]; }
 - (void)viewDidUnload { search.delegate=nil;[search release];search=nil;[super viewDidUnload]; }
 - (void)viewDidLoad {
     [super viewDidLoad];
+    self.navigationItem.rightBarButtonItem=[[[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemAdd target:self action:@selector(addCustom)] autorelease];
     self.tableView.rowHeight = 56;
     search = [[UISearchBar alloc] initWithFrame:CGRectMake(0, 0, self.tableView.bounds.size.width, 44)];
     search.delegate = self; search.text=query;search.placeholder = @"Name, muscle, equipment…"; search.tintColor = [UIColor colorWithRed:0x5B/255.0 green:0x3F/255.0 blue:0xA6/255.0 alpha:1];
     self.tableView.tableHeaderView = search;
     if (picker) self.navigationItem.leftBarButtonItem = [[[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemCancel target:self action:@selector(cancel)] autorelease];
 }
+- (void)addCustom { [self.navigationController pushViewController:[[[LFCustomExercise alloc] init] autorelease] animated:YES]; }
 - (void)cancel { [self dismissModalViewControllerAnimated:YES]; }
 - (void)searchBar:(UISearchBar *)sb textDidChange:(NSString *)t { [query release]; query = [t copy]; [NSObject cancelPreviousPerformRequestsWithTarget:self selector:@selector(updateResults) object:nil];[self performSelector:@selector(updateResults) withObject:nil afterDelay:0.12]; }
 - (void)searchBarSearchButtonClicked:(UISearchBar *)sb { [sb resignFirstResponder]; }
@@ -45,7 +48,7 @@
     NSDictionary *e = [[rows objectAtIndex:ip.section] objectAtIndex:ip.row];
     c.textLabel.text = [e objectForKey:@"name"];
     c.detailTextLabel.text = [NSString stringWithFormat:@"%@ · %@", [e objectForKey:@"equipment"] ?: @"", [e objectForKey:@"level"] ?: @""];
-    UIImage *img = [UIImage imageWithContentsOfFile:[LFStore imagePath:[e objectForKey:@"id"] frame:0]];
+    NSString *path=[LFStore imagePath:[e objectForKey:@"id"] frame:0];UIImage *img = path?[UIImage imageWithContentsOfFile:path]:nil;
     // crop to a 64x44 thumbnail
     if (img) { UIGraphicsBeginImageContextWithOptions(CGSizeMake(66, 44), YES, 0); [img drawInRect:CGRectMake(0, 0, 66, 44)]; c.imageView.image = UIGraphicsGetImageFromCurrentImageContext(); UIGraphicsEndImageContext(); } else c.imageView.image = nil;
     c.accessoryType = picker ? UITableViewCellAccessoryNone : UITableViewCellAccessoryDisclosureIndicator;
@@ -80,6 +83,7 @@
 - (void)dealloc { [exercise release]; [frame release]; [steps release]; [facts release]; [best release]; [super dealloc]; }
 - (void)viewDidLoad {
     [super viewDidLoad];
+    if(![[exercise objectForKey:@"images"] count])return;
     // photo card: white, rounded, 1px frame and a soft shadow; the two frames play like a GIF
     CGFloat w = self.tableView.bounds.size.width, cardW = w - 20, imgH = floorf((cardW - 2) * 567.0 / 850.0);
     UIView *hdr = [[[UIView alloc] initWithFrame:CGRectMake(0, 0, w, imgH + 2 + 16)] autorelease];

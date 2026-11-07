@@ -1,6 +1,6 @@
 # Sets
 
-A stripped-down workout log for iPod touch 4. Your log stays on the device. 862 exercises with photos from free-exercise-db, including stretches logged as a hold time, a ratchet wheel for weight and reps, rest timer, body weight and estimated one-rep-max charts, and Claude routines grounded in your goal, available equipment, time and recent training.
+A stripped-down workout log for iPod touch 4. Your log stays on the device. 880 built-in exercises, with 1,718 photos from free-exercise-db, including stretches logged as a hold time, a ratchet wheel for weight and reps, rest timer, body weight and estimated one-rep-max charts, and Claude routines grounded in your goal, available equipment, time and recent training.
 
 ## Coach (3.0)
 
@@ -11,6 +11,12 @@ In **Settings → Sets → AI Coach**, choose Claude, enter an Anthropic API key
 Every generated plan opens a review screen. Keep the suggestions you want and tap **Add** to save them; existing plans stay. **Discuss in Claude** opens an editable draft in Claude 3.2 or newer. **Use Draft** puts it in a new chat; **Send** is a separate action. Neither handoff nor coaching changes logs.
 
 Only an explicit Ask or Review a New Plan uploads the goal and bounded progress summary. Handoff stays on-device until Send in Claude. Keys live in device preferences, so protect device backups. Claude API billing is separate from a Claude subscription.
+
+## Exercise library (3.1)
+
+Adds belt and pendulum squats, Bayesian curls, cable and machine variations, tibialis raises, landmine movements and single-leg work. Existing names gain aliases such as reverse pec deck, chest-supported row and hip abduction. The 18 new entries have original instructions; they do not show unrelated photos.
+
+**Exercises → +** creates a custom exercise with a muscle, equipment, hidden search aliases and either weight/reps or timed-hold logging. Custom entries get stable IDs in `Documents/custom-exercises.json`; bundled IDs, routines and workout history are untouched. Unreadable custom files are preserved and further saves are refused.
 
 ## Search and logging
 
@@ -36,7 +42,7 @@ Everything is hand-written Foundation and UIKit from 2011. The JSON parser is in
 
 ## Verification
 
-`./tests/build.sh` runs host transport, cancellation, credential separation, URL handoff and plan-validation tests. `./tests/device-build.sh` builds an isolated audit app for native view loading/unloading and active-request teardown. It never uses a real key. `AUDIT_MAIN=tests/live.m ./tests/device-build.sh` instead builds an opt-in live test using synthetic goals; it requires an API key in the audit app’s own preferences and incurs API usage. See [the state and memory audit](docs/STATE_AND_MEMORY.md).
+`./tests/build.sh` runs host transport, cancellation, credential separation, URL handoff and plan-validation tests. `./tests/device-build.sh` builds an isolated audit app for native view loading/unloading and active-request teardown. It never uses a real key. `AUDIT_MAIN=tests/live.m ./tests/device-build.sh` instead builds an opt-in live test using synthetic goals; it requires an API key in the audit app’s own preferences and incurs API usage. See [the state and memory audit](docs/STATE_AND_MEMORY.md) and [exercise-library invariants](docs/EXERCISE_LIBRARY.md).
 
 ## License
 

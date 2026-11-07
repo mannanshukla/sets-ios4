@@ -4,6 +4,14 @@
 static NSArray *gExercises = nil; static NSDictionary *gById = nil; static BOOL gStretch = NO;
 static NSArray *gWorkouts = nil;   // parsed history, kept until the next save; the stats below read it many times per screen
 
+static BOOL LFCustomValid(id e) {
+    if(![e isKindOfClass:[NSDictionary class]])return NO;
+    for(NSString *k in [NSArray arrayWithObjects:@"name",@"equipment",@"category",nil]) { id v=[e objectForKey:k];if(![v isKindOfClass:[NSString class]]||![v length]||[v length]>80)return NO; }
+    if(![[e objectForKey:@"category"] isEqual:@"strength"]&&![[e objectForKey:@"category"] isEqual:@"stretching"])return NO;
+    for(NSString *k in [NSArray arrayWithObjects:@"primary",@"secondary",@"aliases",@"images",@"instructions",nil]) { id a=[e objectForKey:k];if(![a isKindOfClass:[NSArray class]]||[a count]>30)return NO;for(id v in a)if(![v isKindOfClass:[NSString class]]||[v length]>300)return NO; }
+    return [[e objectForKey:@"primary"] count]>0;
+}
+
 @implementation LFStore
 + (NSString *)docs { return [NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES) objectAtIndex:0]; }
 + (id)readJSON:(NSString *)name { NSString *t = [NSString stringWithContentsOfFile:[[self docs] stringByAppendingPathComponent:name] encoding:NSUTF8StringEncoding error:nil]; return t ? [ORJSON parse:t] : nil; }
@@ -13,10 +21,23 @@ static NSArray *gWorkouts = nil;   // parsed history, kept until the next save; 
     if (gExercises) return;
     NSString *p = [[NSBundle mainBundle] pathForResource:@"exercises" ofType:@"json"];
     NSArray *a = [ORJSON parse:[NSString stringWithContentsOfFile:p encoding:NSUTF8StringEncoding error:nil]] ?: [NSArray array];
+    NSMutableArray *all=[NSMutableArray arrayWithArray:a];id custom=[self readJSON:@"custom-exercises.json"];
+    if([custom isKindOfClass:[NSArray class]])for(id e in custom)if(LFCustomValid(e) && [[e objectForKey:@"id"] isKindOfClass:[NSString class]] && [[e objectForKey:@"id"] hasPrefix:@"custom-"] && [[e objectForKey:@"name"] isKindOfClass:[NSString class]])[all addObject:e];
+    [all sortUsingDescriptors:[NSArray arrayWithObject:[NSSortDescriptor sortDescriptorWithKey:@"name" ascending:YES selector:@selector(localizedCaseInsensitiveCompare:)]]];a=all;
     gExercises = [a retain];
     NSMutableDictionary *m = [NSMutableDictionary dictionary];
     for (NSDictionary *e in a) [m setObject:e forKey:[e objectForKey:@"id"]];
     gById = [m retain];
+}
++ (BOOL)addCustomExercise:(NSDictionary *)e error:(NSString **)error {
+    if(!LFCustomValid(e)) { if(error)*error=@"Enter a name, muscle and equipment, with valid search aliases.";return NO; }
+    NSString *name=[[e objectForKey:@"name"] stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
+    if(![name length]) { if(error)*error=@"Enter an exercise name.";return NO; }
+    for(NSDictionary *old in [self exercises])if([[old objectForKey:@"name"] caseInsensitiveCompare:name]==NSOrderedSame) { if(error)*error=@"An exercise with this name already exists. Search for it or use a more specific name.";return NO; }
+    id stored=[self readJSON:@"custom-exercises.json"];if((!stored && [[NSFileManager defaultManager] fileExistsAtPath:[[self docs] stringByAppendingPathComponent:@"custom-exercises.json"]]) || (stored && ![stored isKindOfClass:[NSArray class]])) { if(error)*error=@"Your custom exercise file could not be read. It has been left untouched.";return NO; }
+    NSMutableArray *all=[NSMutableArray arrayWithArray:stored?:[NSArray array]];NSMutableDictionary *copy=[NSMutableDictionary dictionaryWithDictionary:e];[copy setObject:name forKey:@"name"];[copy setObject:[@"custom-" stringByAppendingString:[self uniqueId]] forKey:@"id"];[all addObject:copy];
+    BOOL saved=[[ORJSON stringify:all] writeToFile:[[self docs] stringByAppendingPathComponent:@"custom-exercises.json"] atomically:YES encoding:NSUTF8StringEncoding error:NULL];if(!saved) { if(error)*error=@"The exercise could not be saved. Please try again.";return NO; }
+    [gExercises release];gExercises=nil;[gById release];gById=nil;return YES;
 }
 + (BOOL)isStretch:(NSDictionary *)e {   // stretches, plus the timed holds that are logged the same way
     if ([[e objectForKey:@"category"] isEqualToString:@"stretching"]) return YES;

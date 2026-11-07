@@ -1,6 +1,7 @@
 #import <Foundation/Foundation.h>
 // Local-only storage: exercises from the bundle, routines/workouts as JSON files in Documents.
 @interface LFStore : NSObject
++ (BOOL)addCustomExercise:(NSDictionary *)exercise error:(NSString **)error;
 + (NSArray *)exercises;                              // bundled, sorted by name: {id, name, equipment, primary[], secondary[], level, instructions[], images[]}
 + (NSDictionary *)exercise:(NSString *)eid;
 + (NSArray *)muscleGroups;                           // ordered list of primary muscle names present (for the current category)
