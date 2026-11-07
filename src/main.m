@@ -1,7 +1,7 @@
 #import <UIKit/UIKit.h>
 #import "LFSkin.h"
 #import "LFWorkoutViewController.h"
-#import "LFRoutinesViewController.h"
+#import "LFCoachViewController.h"
 #import "LFExercisesViewController.h"
 #import "LFProgressViewController.h"
 
@@ -13,11 +13,11 @@
     window = [[UIWindow alloc] initWithFrame:[[UIScreen mainScreen] bounds]];
     tabs = [[UITabBarController alloc] init];
     LFWorkoutViewController *w = [[[LFWorkoutViewController alloc] init] autorelease];
-    LFRoutinesViewController *r = [[[LFRoutinesViewController alloc] init] autorelease];
+    LFCoachViewController *r = [[[LFCoachViewController alloc] init] autorelease];
     LFExercisesViewController *e = [[[LFExercisesViewController alloc] init] autorelease];
     LFHistoryViewController *h = [[[LFHistoryViewController alloc] init] autorelease];
     LFProgressViewController *p = [[[LFProgressViewController alloc] init] autorelease]; p.tabBarItem.image = [UIImage imageNamed:@"tab-progress.png"];
-    w.tabBarItem.image = [UIImage imageNamed:@"tab-workout.png"]; r.tabBarItem.image = [UIImage imageNamed:@"tab-routines.png"];
+    w.tabBarItem.image = [UIImage imageNamed:@"tab-workout.png"];
     e.tabBarItem.image = [UIImage imageNamed:@"tab-exercises.png"]; h.tabBarItem.image = [UIImage imageNamed:@"tab-history.png"];
     tabs.viewControllers = [NSArray arrayWithObjects:[self wrap:w], [self wrap:r], [self wrap:e], [self wrap:h], [self wrap:p], nil];
     tabs.selectedIndex = [[NSUserDefaults standardUserDefaults] integerForKey:@"lf_tab"];

@@ -19,6 +19,7 @@
 #import "LFAI.h"
 #import "LFStore.h"
 @implementation LFStore
++ (NSArray *)routines { return [NSArray array]; }
 + (NSString *)uniqueId { return [[NSProcessInfo processInfo] globallyUniqueString]; }
 + (NSArray *)exercises { NSMutableArray *a=[NSMutableArray array];for(NSString *key in [NSArray arrayWithObjects:@"one",@"two",@"three",@"bar",@"stretch",nil])[a addObject:[NSDictionary dictionaryWithObjectsAndKeys:key,@"id",key,@"name",[key isEqual:@"bar"]?@"barbell":@"body only",@"equipment",[NSArray arrayWithObject:@"legs"],@"primary",nil]];return a; }
 + (NSDictionary *)exercise:(NSString *)key { for(NSDictionary *e in [self exercises])if([[e objectForKey:@"id"] isEqual:key])return e;return nil; }
@@ -76,6 +77,7 @@ static void transport(void) {
 static void handoff(void) {
     NSString *error=nil;NSURL *u=CLDraftURL(@"Habits",@"Café & a goal? #1",@"Read 10 pages\nA+B = a habit");NSString *text=CLDraftTextFromURL(u,&error);check([text rangeOfString:@"Café & a goal? #1"].location!=NSNotFound && [text rangeOfString:@"A+B"].location!=NSNotFound,"draft preserves Unicode and reserved characters");
     for(NSString *bad in [NSArray arrayWithObjects:@"https://compose?source=Habits&text=x",@"claude-ipod://send?source=Habits&text=x",@"claude-ipod://compose?source=Habits&text=x&send=1",@"claude-ipod://compose?source=Habits&text=x&text=y",@"claude-ipod://compose?source=Unknown&text=x",@"claude-ipod://compose?source=Sets&text=",nil])check(!CLDraftTextFromURL([NSURL URLWithString:bad],&error),"unsafe draft URL rejected");
+    check([CLDraftTextFromURL(CLDraftURL(@"Cards",@"Explain ATP",@"Study summary"),&error) rangeOfString:@"Explain ATP"].location!=NSNotFound,"Cards draft roundtrip");
     check(!CLDraftURL(@"Sets",@"q",[@"x" stringByPaddingToLength:12001 withString:@"x" startingAtIndex:0]),"draft size bounded");
 }
 static void plans(void) {

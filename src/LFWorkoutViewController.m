@@ -1,6 +1,7 @@
 #import "LFWorkoutViewController.h"
 #import "LFSkin.h"
 #import "LFStore.h"
+#import "LFRoutinesViewController.h"
 #import <AudioToolbox/AudioToolbox.h>
 #import <QuartzCore/QuartzCore.h>
 
@@ -11,8 +12,8 @@ static BOOL stretchEx(NSDictionary *ex) {   // true for stretches and for anythi
     NSString *t = [ex objectForKey:@"target"]; return [t isKindOfClass:[NSString class]] && [t hasSuffix:@"s"] && [[t substringToIndex:[t length] - 1] intValue] > 0;
 }
 #define HOLD_ROWS 37   /* 0 .. 180 s in 5s */
-static double weightStep(void) { return [LFStore useKg] ? 1.0 : 2.5; }
-#define WEIGHT_ROWS 241   /* 0 .. 600 lb in 2.5s, or 0 .. 240 kg in 1s */
+static double weightStep(void) { return [LFStore useKg] ? 0.25 : 0.5; }
+#define WEIGHT_ROWS 2001   /* 0 .. 1000 lb in 0.5s, or 0 .. 500 kg in 0.25s */
 #define REPS_ROWS 51
 
 @implementation LFWorkoutViewController
@@ -32,7 +33,8 @@ static double weightStep(void) { return [LFStore useKg] ? 1.0 : 2.5; }
 
 - (id)init { if ((self = [super initWithStyle:UITableViewStylePlain])) { self.title = @"Workout"; self.tabBarItem.title = @"Workout"; } return self; }
 - (void)viewDidLoad { [super viewDidLoad]; LFSkinPaperTable(self.tableView); }
-- (void)dealloc { [tick invalidate]; [active release]; [exercises release]; [routines release]; [drum release]; [picker release]; [drumTitle release]; [super dealloc]; }
+- (void)dealloc { [tick invalidate]; [tick release]; [active release]; [exercises release]; [routines release]; [drum release]; [picker release]; [drumTitle release]; [super dealloc]; }
+- (void)showRoutines { [self.navigationController pushViewController:[[[LFRoutinesViewController alloc] init] autorelease] animated:YES]; }
 - (void)load {
     NSDictionary *a = [LFStore activeWorkout];
     [active release]; active = a ? [[NSMutableDictionary alloc] initWithDictionary:a] : nil;
@@ -42,7 +44,7 @@ static double weightStep(void) { return [LFStore useKg] ? 1.0 : 2.5; }
         self.navigationItem.leftBarButtonItem = [[[UIBarButtonItem alloc] initWithTitle:@"Discard" style:UIBarButtonItemStyleBordered target:self action:@selector(discard)] autorelease];
         self.navigationItem.rightBarButtonItem = [[[UIBarButtonItem alloc] initWithTitle:@"Finish" style:UIBarButtonItemStyleDone target:self action:@selector(finish)] autorelease];
     } else {
-        self.navigationItem.leftBarButtonItem = nil; self.navigationItem.rightBarButtonItem = nil; self.navigationItem.title = @"Workout";
+        self.navigationItem.leftBarButtonItem = nil; self.navigationItem.rightBarButtonItem = [[[UIBarButtonItem alloc] initWithTitle:@"Routines" style:UIBarButtonItemStyleBordered target:self action:@selector(showRoutines)] autorelease]; self.navigationItem.title = @"Workout";
     }
     [self.tableView reloadData];
 }
@@ -128,13 +130,14 @@ static double weightStep(void) { return [LFStore useKg] ? 1.0 : 2.5; }
     drum.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleTopMargin;
     UIToolbar *bar = [[[UIToolbar alloc] initWithFrame:CGRectMake(0, 0, b.size.width, 44)] autorelease];
     bar.barStyle = UIBarStyleBlack; bar.translucent = NO; bar.autoresizingMask = UIViewAutoresizingFlexibleWidth;
-    drumTitle = [[UILabel alloc] initWithFrame:CGRectMake(0, 0, 150, 44)];
+    drumTitle = [[UILabel alloc] initWithFrame:CGRectMake(0, 0, 90, 44)];
     drumTitle.font = [UIFont boldSystemFontOfSize:14]; drumTitle.adjustsFontSizeToFitWidth = YES; drumTitle.minimumFontSize = 10; drumTitle.textColor = [UIColor whiteColor]; drumTitle.backgroundColor = [UIColor clearColor]; drumTitle.textAlignment = UITextAlignmentCenter;
     UIBarButtonItem *title = [[[UIBarButtonItem alloc] initWithCustomView:drumTitle] autorelease];
     UIBarButtonItem *flex = [[[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemFlexibleSpace target:nil action:nil] autorelease];
     UIBarButtonItem *done = [[[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemDone target:self action:@selector(closeDrum)] autorelease];
     UIBarButtonItem *next = [[[UIBarButtonItem alloc] initWithTitle:@"Next Set" style:UIBarButtonItemStyleBordered target:self action:@selector(drumNext)] autorelease];
-    bar.items = [NSArray arrayWithObjects:next, flex, title, flex, done, nil];
+    UIBarButtonItem *exact=[[[UIBarButtonItem alloc] initWithTitle:@"Exact" style:UIBarButtonItemStyleBordered target:self action:@selector(exactWeight)] autorelease];
+    bar.items = [NSArray arrayWithObjects:next, exact, flex, title, flex, done, nil];
     [drum addSubview:bar];
     picker = [[UIPickerView alloc] initWithFrame:CGRectMake(0, 44, b.size.width, 216)];
     picker.dataSource = self; picker.delegate = self; picker.showsSelectionIndicator = YES; picker.autoresizingMask = UIViewAutoresizingFlexibleWidth;
@@ -143,7 +146,19 @@ static double weightStep(void) { return [LFStore useKg] ? 1.0 : 2.5; }
     [host addSubview:drum];
 }
 - (NSDictionary *)pickedSet { if (pickSection >= (NSInteger)[exercises count]) return nil; NSArray *sets = [[exercises objectAtIndex:pickSection] objectForKey:@"sets"]; return pickRow < (NSInteger)[sets count] ? [sets objectAtIndex:pickRow] : nil; }
+- (void)exactWeight {
+    if([self pickingStretch])return;
+    NSArray *sets=[self setsAt:pickSection];if(pickRow<0 || pickRow>=(NSInteger)[sets count])return;
+    double w=[[[sets objectAtIndex:pickRow] objectForKey:@"weight"] doubleValue];
+    LFWeightViewController *editor=[[[LFWeightViewController alloc] initWithWeight:w unit:unit() delegate:self] autorelease];
+    UINavigationController *nav=[[[UINavigationController alloc] initWithRootViewController:editor] autorelease];LFSkinNavBar(nav.navigationBar);[self presentModalViewController:nav animated:YES];
+}
+- (void)weightSaved:(double)value {
+    if(pickSection<0 || pickSection>=(NSInteger)[exercises count])return;NSMutableArray *sets=[self setsAt:pickSection];if(pickRow<0 || pickRow>=(NSInteger)[sets count])return;
+    NSMutableDictionary *s=[NSMutableDictionary dictionaryWithDictionary:[sets objectAtIndex:pickRow]];[s setObject:[NSNumber numberWithDouble:value] forKey:@"weight"];[sets replaceObjectAtIndex:pickRow withObject:s];[self replaceSets:sets at:pickSection];[self.tableView reloadData];
+}
 - (void)syncDrumToSet {
+    UIToolbar *bar=(UIToolbar *)[[drum subviews] objectAtIndex:0];[[bar.items objectAtIndex:1] setEnabled:![self pickingStretch]];
     NSDictionary *s = [self pickedSet]; if (!s) return;
     NSDictionary *e = [LFStore exercise:[[exercises objectAtIndex:pickSection] objectForKey:@"id"]];
     NSString *nm = [e objectForKey:@"name"] ?: @"";

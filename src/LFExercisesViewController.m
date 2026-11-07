@@ -2,40 +2,43 @@
 #import <QuartzCore/QuartzCore.h>
 #import "LFExercisesViewController.h"
 #import "LFStore.h"
+#import "LFSearch.h"
 
 @implementation LFExercisesViewController
 @synthesize picker;
 - (id)init {
-    if ((self = [super initWithStyle:UITableViewStylePlain])) { self.title = @"Exercises"; self.tabBarItem.title = @"Exercises"; groups = [[LFStore muscleGroups] retain]; rows = [[NSMutableArray alloc] init]; [self rebuild];
-        UISegmentedControl *seg = [[[UISegmentedControl alloc] initWithItems:[NSArray arrayWithObjects:@"Lifts", @"Stretches", nil]] autorelease]; seg.segmentedControlStyle = UISegmentedControlStyleBar; seg.selectedSegmentIndex = 0; [seg addTarget:self action:@selector(kindChanged:) forControlEvents:UIControlEventValueChanged]; self.navigationItem.titleView = seg; }
+    if ((self = [super initWithStyle:UITableViewStylePlain])) { self.title = @"Exercises"; self.tabBarItem.title = @"Exercises"; searchIndex=[[LFSearch alloc] initWithExercises:[LFStore exercises]]; rows = [[NSMutableArray alloc] init]; [self rebuild];
+        UISegmentedControl *seg = [[[UISegmentedControl alloc] initWithItems:[NSArray arrayWithObjects:@"All", @"Lifts", @"Stretches", nil]] autorelease]; seg.segmentedControlStyle = UISegmentedControlStyleBar; seg.selectedSegmentIndex = 0; [seg addTarget:self action:@selector(kindChanged:) forControlEvents:UIControlEventValueChanged]; self.navigationItem.titleView = seg; }
     return self;
 }
-- (void)dealloc { [groups release]; [rows release]; [search release]; [query release]; [super dealloc]; }
-- (void)kindChanged:(UISegmentedControl *)seg { [LFStore setShowStretches:seg.selectedSegmentIndex == 1]; [groups release]; groups = [[LFStore muscleGroups] retain]; [self rebuild]; [self.tableView reloadData]; if ([self.tableView numberOfSections]) [self.tableView scrollRectToVisible:CGRectMake(0, 0, 1, 1) animated:NO]; }
+- (void)dealloc { [NSObject cancelPreviousPerformRequestsWithTarget:self];search.delegate=nil;[searchIndex release];[groups release];[rows release];[search release];[query release];[super dealloc]; }
+- (void)kindChanged:(UISegmentedControl *)seg { kind=seg.selectedSegmentIndex;[self updateResults]; }
 - (void)rebuild {
-    [rows removeAllObjects];
-    for (NSString *g in groups) {
-        NSMutableArray *r = [NSMutableArray array];
-        for (NSDictionary *e in [LFStore exercisesForMuscle:g]) if (![query length] || [[e objectForKey:@"name"] rangeOfString:query options:NSCaseInsensitiveSearch].location != NSNotFound) [r addObject:e];
-        [rows addObject:r];
-    }
+    NSArray *found=[searchIndex resultsForQuery:query kind:kind];[rows removeAllObjects];[groups release];
+    if([query length]) { groups=[[NSArray alloc] initWithObjects:[NSString stringWithFormat:@"%u matches",(unsigned)[found count]],nil];[rows addObject:found]; }
+    else { NSMutableDictionary *by=[NSMutableDictionary dictionary];for(NSDictionary *e in found) { NSString *g=[[e objectForKey:@"primary"] count]?[[e objectForKey:@"primary"] objectAtIndex:0]:@"Other";if(![by objectForKey:g])[by setObject:[NSMutableArray array] forKey:g];[[by objectForKey:g] addObject:e]; }groups=[[[by allKeys] sortedArrayUsingSelector:@selector(localizedCaseInsensitiveCompare:)] retain];for(NSString *g in groups)[rows addObject:[by objectForKey:g]]; }
 }
+- (void)updateResults { [NSObject cancelPreviousPerformRequestsWithTarget:self selector:@selector(updateResults) object:nil];[self rebuild];[self.tableView reloadData]; }
+- (void)viewWillDisappear:(BOOL)a { [NSObject cancelPreviousPerformRequestsWithTarget:self];[search resignFirstResponder];[super viewWillDisappear:a]; }
+- (void)viewWillAppear:(BOOL)a { [super viewWillAppear:a];[self updateResults]; }
+- (void)viewDidUnload { search.delegate=nil;[search release];search=nil;[super viewDidUnload]; }
 - (void)viewDidLoad {
     [super viewDidLoad];
     self.tableView.rowHeight = 56;
     search = [[UISearchBar alloc] initWithFrame:CGRectMake(0, 0, self.tableView.bounds.size.width, 44)];
-    search.delegate = self; search.placeholder = @"Search exercises"; search.tintColor = [UIColor colorWithRed:0x5B/255.0 green:0x3F/255.0 blue:0xA6/255.0 alpha:1];
+    search.delegate = self; search.text=query;search.placeholder = @"Name, muscle, equipment…"; search.tintColor = [UIColor colorWithRed:0x5B/255.0 green:0x3F/255.0 blue:0xA6/255.0 alpha:1];
     self.tableView.tableHeaderView = search;
     if (picker) self.navigationItem.leftBarButtonItem = [[[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemCancel target:self action:@selector(cancel)] autorelease];
 }
 - (void)cancel { [self dismissModalViewControllerAnimated:YES]; }
-- (void)searchBar:(UISearchBar *)sb textDidChange:(NSString *)t { [query release]; query = [t copy]; [self rebuild]; [self.tableView reloadData]; }
+- (void)searchBar:(UISearchBar *)sb textDidChange:(NSString *)t { [query release]; query = [t copy]; [NSObject cancelPreviousPerformRequestsWithTarget:self selector:@selector(updateResults) object:nil];[self performSelector:@selector(updateResults) withObject:nil afterDelay:0.12]; }
 - (void)searchBarSearchButtonClicked:(UISearchBar *)sb { [sb resignFirstResponder]; }
 - (void)scrollViewWillBeginDragging:(UIScrollView *)sv { [search resignFirstResponder]; }
 - (NSInteger)numberOfSectionsInTableView:(UITableView *)tv { return [groups count]; }
-- (NSInteger)tableView:(UITableView *)tv numberOfRowsInSection:(NSInteger)s { return [[rows objectAtIndex:s] count]; }
-- (NSString *)tableView:(UITableView *)tv titleForHeaderInSection:(NSInteger)s { return [[rows objectAtIndex:s] count] ? [[groups objectAtIndex:s] capitalizedString] : nil; }
+- (NSInteger)tableView:(UITableView *)tv numberOfRowsInSection:(NSInteger)s { return [query length]?MAX(1,[[rows objectAtIndex:s] count]):[[rows objectAtIndex:s] count]; }
+- (NSString *)tableView:(UITableView *)tv titleForHeaderInSection:(NSInteger)s { return ([query length] || [[rows objectAtIndex:s] count]) ? [[groups objectAtIndex:s] capitalizedString] : nil; }
 - (UITableViewCell *)tableView:(UITableView *)tv cellForRowAtIndexPath:(NSIndexPath *)ip {
+    if(![[rows objectAtIndex:ip.section] count]) { UITableViewCell *empty=[[[UITableViewCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:nil] autorelease];empty.textLabel.text=@"No matches. Try a shorter name.";empty.textLabel.font=[UIFont systemFontOfSize:15];empty.selectionStyle=UITableViewCellSelectionStyleNone;return empty; }
     static NSString *rid = @"ex";
     UITableViewCell *c = [tv dequeueReusableCellWithIdentifier:rid];
     if (!c) { c = [[[UITableViewCell alloc] initWithStyle:UITableViewCellStyleSubtitle reuseIdentifier:rid] autorelease]; c.textLabel.font = [UIFont boldSystemFontOfSize:16]; c.imageView.layer.borderWidth = 1; c.imageView.layer.borderColor = [UIColor colorWithWhite:0.75 alpha:1].CGColor; c.detailTextLabel.font = [UIFont systemFontOfSize:12]; c.detailTextLabel.textColor = [UIColor colorWithWhite:0.45 alpha:1]; c.imageView.contentMode = UIViewContentModeScaleAspectFill; c.imageView.clipsToBounds = YES; }
@@ -49,6 +52,7 @@
     return c;
 }
 - (void)tableView:(UITableView *)tv didSelectRowAtIndexPath:(NSIndexPath *)ip {
+    if(![[rows objectAtIndex:ip.section] count])return;
     NSDictionary *e = [[rows objectAtIndex:ip.section] objectAtIndex:ip.row];
     if (picker) { [tv deselectRowAtIndexPath:ip animated:YES]; [picker exercisesPicker:self didPick:e]; return; }
     LFExerciseDetailViewController *d = [[LFExerciseDetailViewController alloc] initWithExercise:e];

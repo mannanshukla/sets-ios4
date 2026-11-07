@@ -140,7 +140,7 @@
 		</dict>
 		<dict>
 			<key>DefaultValue</key>
-			<string>2.0</string>
+			<string>3.0</string>
 			<key>Key</key>
 			<string>lf_version</string>
 			<key>Title</key>

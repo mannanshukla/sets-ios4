@@ -1,6 +1,11 @@
 #import <UIKit/UIKit.h>
 #import <malloc/malloc.h>
 #import "CLCoachViewController.h"
+#import "CLPaper.h"
+#import "ORTextLayout.h"
+#import "LFCoachViewController.h"
+#import "LFWorkoutViewController.h"
+#import "LFSearch.h"
 #ifdef HABITS
 #import "HBHabitsViewController.h"
 #import "HBReviewViewController.h"
@@ -36,6 +41,15 @@ static void check(BOOL b,const char *message) { checks++;if(!b) { fprintf(stderr
 @implementation TrackedPreview
 - (void)dealloc { closedPreviews++;[super dealloc]; }
 @end
+static NSUInteger closedNew;
+#define TRACK(name,base) @interface name:base @end @implementation name - (void)dealloc { closedNew++;[super dealloc]; } @end
+TRACK(TrackedHome,LFCoachViewController)
+TRACK(TrackedNote,CLNoteViewController)
+TRACK(TrackedCheck,CLCheckInController)
+TRACK(TrackedSearch,LFExercisesViewController)
+@interface LFWorkoutViewController (Audit)
+- (void)load;
+@end
 @interface PendingProtocol:NSURLProtocol @end
 @implementation PendingProtocol
 + (BOOL)canInitWithRequest:(NSURLRequest *)r { return [[[r URL] host] isEqual:@"api.anthropic.com"]; }
@@ -59,8 +73,17 @@ static void reload(UIViewController *c) { check(c.view!=nil,"view loads");[c vie
     [LFStore saveRoutines:[NSArray array]];
     NSArray *plan=[NSArray arrayWithObject:[NSDictionary dictionaryWithObjectsAndKeys:@"fixture-routine",@"id",@"Small start",@"name",[NSArray array],@"exercises",nil]];
 #endif
-    check([plan count]==1,"plan fixture ready");size_t baseline=0,last=0;
+    check([plan count]==1,"plan fixture ready");
+    double v=0;check(LFParseWeight(@"13",&v)&&v==13,"13 lb exact entry");check(LFParseWeight(@"13.25",&v)&&v==13.25,"fractional entry");check(LFParseWeight(@"13,25",&v)&&v==13.25,"decimal comma");check(!LFParseWeight(@"NaN",&v)&&!LFParseWeight(@"-1",&v)&&!LFParseWeight(@"12.3.4",&v)&&!LFParseWeight(@"10001",&v),"invalid weights rejected");
+    NSDictionary *fixture=[NSDictionary dictionaryWithObjectsAndKeys:@"fixture",@"id",@"Fixture",@"name",[NSArray arrayWithObject:[NSDictionary dictionaryWithObjectsAndKeys:@"Barbell_Deadlift",@"id",[NSNumber numberWithInt:1],@"sets",@"8",@"reps",nil]],@"exercises",nil];[LFWorkoutViewController startFromRoutine:fixture];
+    LFWorkoutViewController *workout=[LFWorkoutViewController new];[workout load];[workout setValue:[NSNumber numberWithInt:0] forKey:@"pickSection"];[workout setValue:[NSNumber numberWithInt:0] forKey:@"pickRow"];[workout weightSaved:13.25];
+    [workout pickerView:nil didSelectRow:8 inComponent:1];NSArray *saved=[[[[LFStore activeWorkout] objectForKey:@"exercises"] objectAtIndex:0] objectForKey:@"sets"];check([[[saved objectAtIndex:0] objectForKey:@"weight"] doubleValue]==13.25,"reps edit preserves exact weight");[workout pickerView:nil didSelectRow:26 inComponent:0];saved=[[[[LFStore activeWorkout] objectForKey:@"exercises"] objectAtIndex:0] objectForKey:@"sets"];check([[[saved objectAtIndex:0] objectForKey:@"weight"] doubleValue]==13,"wheel supports 13 lb");[workout release];[LFStore saveActiveWorkout:nil];
+    LFSearch *search=[[LFSearch alloc] initWithExercises:[LFStore exercises]];NSDate *started=[NSDate date];for(int i=0;i<10;i++)[search resultsForQuery:@"dumbell shoulder press" kind:0];printf("10 A4 full-catalog searches %.3fs\n",-[started timeIntervalSinceNow]);[search release];
+    NSDictionary *options=[NSDictionary dictionaryWithObjectsAndKeys:@"strength",@"goal",@"beginner",@"level",@"full gym",@"equipment",@"",@"notes",[NSNumber numberWithInt:3],@"days",[NSNumber numberWithInt:45],@"minutes",nil];check([[LFAI routinePrompt:options] length]<96000,"expanded catalog fits request budget");printf("Full catalog plan prompt: %u chars\n",(unsigned)[[LFAI routinePrompt:options] length]);
+    NSMutableString *longNote=[NSMutableString string];for(int i=0;i<100;i++)[longNote appendString:@"## A useful heading\n- A **bold** next step with a normal paragraph.\n\n"];ORTextLayout *layout=[[ORTextLayout alloc] initWithText:longNote markdown:YES width:284];check([layout pageCount]>10,"long note paginates without truncation");[layout release];
+    size_t baseline=0,last=0;
     for(int i=0;i<50;i++) { NSAutoreleasePool *pool=[NSAutoreleasePool new];
+        TrackedHome *home=[TrackedHome new];reload(home);[home release];TrackedCheck *checkin=[[TrackedCheck alloc] initWithSource:@"Sets"];reload(checkin);[checkin release];TrackedNote *note=[[TrackedNote alloc] initWithTitle:@"Claude" text:@"## Progress\n- **Keep** a consistent plan.\n\n```\nA long line that stays inside its box rather than overflowing the paper.\n```\n"];reload(note);[note release];TrackedSearch *search=[TrackedSearch new];reload(search);[search release];
         TrackedGenerator *g=[TrackedGenerator new];reload(g);CLAIRequest *active=[g valueForKey:@"request"];[active startSystem:@"fixture" user:@"fixture"];check(active.running,"request started for teardown test");[g release];
         TrackedReview *r=[TrackedReview new];reload(r);[r release];
         TrackedCoach *c=[[TrackedCoach alloc] initWithSource:@"Habits" context:@"No history yet." system:@"A small next step."];reload(c);active=[c valueForKey:@"request"];[active startSystem:@"fixture" user:@"fixture"];check(active.running,"coach upload pending");[c release];
@@ -74,9 +97,10 @@ static void reload(UIViewController *c) { check(c.view!=nil,"view loads");[c vie
         reload(p);[p release];[[NSRunLoop currentRunLoop] runUntilDate:[NSDate dateWithTimeIntervalSinceNow:.02]];[pool drain];last=allocated();if(i==9)baseline=last;
         if(i%10==9) { printf("cycle %d allocated=%lu\n",i+1,(unsigned long)last);fflush(stdout); }
     }
+    check(closedNew==200,"new Coach, notes, check-in and search controllers released");
     check(closedGenerators==50 && closedReviews==50 && closedCoaches==50 && closedPreviews==50,"all 200 controllers released, including pending requests");check(last<=baseline+512*1024,"post-warmup heap bounded");
     CLAIRequest *request=[CLAIRequest new];[request startSystem:@"fixture" user:@"fixture"];[[NSNotificationCenter defaultCenter] postNotificationName:UIApplicationDidEnterBackgroundNotification object:nil];check(request.state==CLAICancelled,"background cancels transport");[request release];
-    printf("PASS %lu native assertions; 200 controllers released; heap change %+ld bytes\n",(unsigned long)checks,(long)last-(long)baseline);fflush(stdout);[outer drain];exit(0);
+    printf("PASS %lu native assertions; 400 controllers released; heap change %+ld bytes\n",(unsigned long)checks,(long)last-(long)baseline);fflush(stdout);[outer drain];exit(0);
 }
 - (void)dealloc { [window release];[super dealloc]; }
 @end

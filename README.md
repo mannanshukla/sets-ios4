@@ -1,16 +1,22 @@
 # Sets
 
-A stripped-down workout log for iPod touch 4. Your log stays on the device. 365 exercises with photos from free-exercise-db, 123 of them stretches logged as a hold time, a ratchet wheel for weight and reps, rest timer, body weight and estimated one-rep-max charts, and Claude routines grounded in your goal, available equipment, time and recent training.
+A stripped-down workout log for iPod touch 4. Your log stays on the device. 862 exercises with photos from free-exercise-db, including stretches logged as a hold time, a ratchet wheel for weight and reps, rest timer, body weight and estimated one-rep-max charts, and Claude routines grounded in your goal, available equipment, time and recent training.
 
-## Claude integration (2.0)
+## Coach (3.0)
 
 In **Settings → Sets → AI Coach**, choose Claude, enter an Anthropic API key in the masked field, and optionally set a model ID. The default is `claude-sonnet-5-5`. The older OpenRelay provider and its key remain separate. Nothing reads credentials from another app; keys are never bundled in a build. Legacy iOS requires TLSFix and trusted roots, with certificate verification enabled. Requests go directly to the selected provider over Wi-Fi.
 
-**Routines → Generate** considers your goal, experience, equipment, time and completed workouts. Exercise IDs, equipment, set limits and rep ranges are validated. **Progress → Coach** shows the summary before asking for a review.
+**Coach** is a dedicated tab: check in with your goal, energy, recovery and available time; review your week; ask questions; revisit saved notes. **Your routines** keeps your existing program close. **Build a plan** considers your experience, equipment, time and completed workouts, then validates exercise IDs, equipment, set limits and rep ranges. **Workout → Routines** also opens your routine library.
 
-Every generated plan opens a review screen. Keep the suggestions you want and tap **Add** to save them; existing plans stay. **Discuss in Claude** opens an editable draft in Claude 3.1 or newer. **Use Draft** puts it in a new chat; **Send** is a separate action. Neither handoff nor coaching changes logs.
+Every generated plan opens a review screen. Keep the suggestions you want and tap **Add** to save them; existing plans stay. **Discuss in Claude** opens an editable draft in Claude 3.2 or newer. **Use Draft** puts it in a new chat; **Send** is a separate action. Neither handoff nor coaching changes logs.
 
-Only an explicit Ask/Generate uploads the goal and bounded progress summary. Handoff stays on-device until Send in Claude. Keys live in device preferences, so protect device backups. Claude API billing is separate from a Claude subscription.
+Only an explicit Ask or Review a New Plan uploads the goal and bounded progress summary. Handoff stays on-device until Send in Claude. Keys live in device preferences, so protect device backups. Claude API billing is separate from a Claude subscription.
+
+## Search and logging
+
+Search works offline, ranking exact names and hidden aliases before prefixes and bounded Damerau–Levenshtein token matches. Try `RDL`, `pec deck`, `skull crushers`, `dumbell curl` or `bnech press`. Muscle and equipment tags are searchable without cluttering the exercise title. All/Lifts/Stretches filters include the expanded catalog. Existing exercise IDs and records remain unchanged.
+
+The weight wheel steps by 0.5 lb or 0.25 kg. **Exact** accepts weights such as 13 or 13.25. Changing reps does not round the weight already recorded. Coaching notes use native Core Text, Helvetica, paper, headings and bullets. Long notes scroll as one page; wide code and tables have their own inset box.
 
 ## Layout
 

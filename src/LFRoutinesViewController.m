@@ -11,17 +11,15 @@
 - (void)viewDidLoad {
     [super viewDidLoad]; self.tableView.rowHeight = 56; LFSkinPaperTable(self.tableView);
     self.navigationItem.rightBarButtonItem = [[[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemAdd target:self action:@selector(add)] autorelease];
-    self.navigationItem.leftBarButtonItem = [[[UIBarButtonItem alloc] initWithTitle:@"Generate" style:UIBarButtonItemStyleBordered target:self action:@selector(generate)] autorelease];
 }
 - (void)viewWillAppear:(BOOL)a { [super viewWillAppear:a]; [self reload]; }
 - (void)reload { [routines setArray:[LFStore routines]]; [self.tableView reloadData]; }
 - (void)viewDidAppear:(BOOL)a { [super viewDidAppear:a]; NSUserDefaults *d = [NSUserDefaults standardUserDefaults]; if ([d boolForKey:@"lf_open_routine"] && [routines count]) { [d removeObjectForKey:@"lf_open_routine"]; [d synchronize]; [self tableView:self.tableView didSelectRowAtIndexPath:[NSIndexPath indexPathForRow:0 inSection:0]]; } }
 - (void)add { LFRoutineEditViewController *e = [[LFRoutineEditViewController alloc] initWithRoutine:nil]; [self.navigationController pushViewController:e animated:YES]; [e release]; }
-- (void)generate { LFGenerateViewController *g = [[LFGenerateViewController alloc] init]; [self.navigationController pushViewController:g animated:YES]; [g release]; }
 - (NSInteger)tableView:(UITableView *)tv numberOfRowsInSection:(NSInteger)s { return MAX(1, (NSInteger)[routines count]); }
 - (void)tableView:(UITableView *)tv willDisplayCell:(UITableViewCell *)c forRowAtIndexPath:(NSIndexPath *)ip { LFPaperCell(c); }
 - (UITableViewCell *)tableView:(UITableView *)tv cellForRowAtIndexPath:(NSIndexPath *)ip {
-    if (![routines count]) return LFPaperNoteCell(@"No routines yet. Tap + to build one, or Generate to get a Claude plan to review.");
+    if (![routines count]) return LFPaperNoteCell(@"No routines yet. Tap + to create one, or visit Coach to build a plan.");
     UITableViewCell *c = [tv dequeueReusableCellWithIdentifier:@"r"];
     if (!c) { c = [[[UITableViewCell alloc] initWithStyle:UITableViewCellStyleSubtitle reuseIdentifier:@"r"] autorelease]; c.accessoryType = UITableViewCellAccessoryDisclosureIndicator; c.textLabel.font = [UIFont boldSystemFontOfSize:17]; c.detailTextLabel.font = [UIFont systemFontOfSize:12]; c.detailTextLabel.textColor = [UIColor colorWithWhite:0.45 alpha:1]; }
     NSDictionary *r = [routines objectAtIndex:ip.row];
@@ -187,7 +185,7 @@ static NSArray *repsPresets(void) { static NSArray *r = nil; if (!r) r = [[NSArr
 - (void)saveInputs { if(goal) { [[NSUserDefaults standardUserDefaults] setObject:[self options] forKey:@"ai_training_goal"];[[NSUserDefaults standardUserDefaults] synchronize]; } }
 - (void)viewWillDisappear:(BOOL)a { [self saveInputs];[request cancel];[notes resignFirstResponder];[super viewWillDisappear:a]; }
 - (void)viewDidUnload { [self saveInputs];[request cancel];[self releaseInputs];[super viewDidUnload]; }
-- (void)viewWillAppear:(BOOL)a { [super viewWillAppear:a];self.title=[NSString stringWithFormat:@"%@ Plan",[CLAIRequest providerName]];[self.tableView reloadData]; }
+- (void)viewWillAppear:(BOOL)a { [super viewWillAppear:a];self.title=@"Build a Plan";[self.tableView reloadData]; }
 - (UISegmentedControl *)newSegment:(NSArray *)items sel:(NSInteger)i { UISegmentedControl *s = [[UISegmentedControl alloc] initWithItems:items]; s.segmentedControlStyle = UISegmentedControlStyleBar; s.selectedSegmentIndex = i; s.tintColor = [UIColor colorWithRed:0x5B/255.0 green:0x3F/255.0 blue:0xA6/255.0 alpha:1]; return s; }
 - (void)viewDidLoad {
     [super viewDidLoad];
@@ -218,7 +216,7 @@ static NSArray *repsPresets(void) { static NSArray *r = nil; if (!r) r = [[NSArr
     if (ip.section <= 2) { UISegmentedControl *s = ip.section == 0 ? goal : ip.section == 1 ? level : equipment; s.frame = CGRectMake(8, 7, w - 16, 30); s.autoresizingMask = UIViewAutoresizingFlexibleWidth; [c.contentView addSubview:s]; }
     else if (ip.section <= 4) { UISlider *sl = ip.section == 3 ? days : minutes; UILabel *l = ip.section == 3 ? daysLabel : minutesLabel; sl.frame = CGRectMake(8, 7, w - 70, 30); sl.autoresizingMask = UIViewAutoresizingFlexibleWidth; l.frame = CGRectMake(w - 56, 7, 46, 30); l.autoresizingMask = UIViewAutoresizingFlexibleLeftMargin; [c.contentView addSubview:sl]; [c.contentView addSubview:l]; }
     else if (ip.section == 5) { notes.frame = CGRectMake(10, 7, w - 20, 30); notes.autoresizingMask = UIViewAutoresizingFlexibleWidth; [c.contentView addSubview:notes]; }
-    else { c.selectionStyle = UITableViewCellSelectionStyleBlue; c.textLabel.text = request.running ? @"Stop" : @"Generate Routines"; c.textLabel.textAlignment = UITextAlignmentCenter; c.textLabel.textColor = [UIColor colorWithRed:0x5B/255.0 green:0x3F/255.0 blue:0xA6/255.0 alpha:1]; c.textLabel.font = [UIFont boldSystemFontOfSize:17]; }
+    else { c.selectionStyle = UITableViewCellSelectionStyleBlue; c.textLabel.text = request.running ? @"Stop" : @"Review a New Plan"; c.textLabel.textAlignment = UITextAlignmentCenter; c.textLabel.textColor = [UIColor colorWithRed:0x5B/255.0 green:0x3F/255.0 blue:0xA6/255.0 alpha:1]; c.textLabel.font = [UIFont boldSystemFontOfSize:17]; }
     return c;
 }
 - (void)tableView:(UITableView *)tv didSelectRowAtIndexPath:(NSIndexPath *)ip {

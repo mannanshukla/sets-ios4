@@ -1,6 +1,7 @@
 #import <UIKit/UIKit.h>
 #import "LFExercisesViewController.h"
-@interface LFWorkoutViewController : UITableViewController <LFExercisePicker, UITextFieldDelegate, UIActionSheetDelegate, UIPickerViewDataSource, UIPickerViewDelegate> {
+#import "LFWeightViewController.h"
+@interface LFWorkoutViewController : UITableViewController <LFWeightDelegate, LFExercisePicker, UITextFieldDelegate, UIActionSheetDelegate, UIPickerViewDataSource, UIPickerViewDelegate> {
     NSMutableDictionary *active; NSMutableArray *exercises;   // live copy of the active workout
     NSTimer *tick; NSTimeInterval restEnds; NSArray *routines;
     UIView *drum; UIPickerView *picker; UILabel *drumTitle; NSInteger pickSection, pickRow;   // the slide-up number wheel

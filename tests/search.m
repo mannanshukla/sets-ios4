@@ -1,0 +1,12 @@
+#import <Foundation/Foundation.h>
+#import "LFSearch.h"
+#import "LFStore.h"
+#import "LFAI.h"
+#import "ORJSON.h"
+static void check(BOOL b,const char *m) { if(!b) { fprintf(stderr,"FAIL %s\n",m);exit(1); } }
+int main(void) { NSAutoreleasePool *pool=[NSAutoreleasePool new];NSArray *ex=[ORJSON parse:[NSString stringWithContentsOfFile:@"res/exercises.json" encoding:NSUTF8StringEncoding error:NULL]];LFSearch *s=[[LFSearch alloc] initWithExercises:ex];
+ NSArray *cases=[NSArray arrayWithObjects:[NSArray arrayWithObjects:@"rdl",@"Romanian_Deadlift",nil],[NSArray arrayWithObjects:@"pec deck",@"Butterfly",nil],[NSArray arrayWithObjects:@"skull crushers",@"Lying_Triceps_Press",nil],[NSArray arrayWithObjects:@"bench pres",@"Barbell_Bench_Press_-_Medium_Grip",nil],[NSArray arrayWithObjects:@"dumbell curl",@"Dumbbell_Bicep_Curl",nil],[NSArray arrayWithObjects:@"beNCh   préss",@"Barbell_Bench_Press_-_Medium_Grip",nil],[NSArray arrayWithObjects:@"bnech press",@"Barbell_Bench_Press_-_Medium_Grip",nil],nil];
+ for(NSArray *c in cases) { NSArray *found=[s resultsForQuery:[c objectAtIndex:0] kind:0];BOOL ok=NO;for(NSDictionary *e in [found subarrayWithRange:NSMakeRange(0,MIN(8,[found count]))])if([[e objectForKey:@"id"] isEqual:[c objectAtIndex:1]])ok=YES;printf("query %s: %u results\n",[[c objectAtIndex:0] UTF8String],(unsigned)[found count]);check(ok,"expected exercise among top 8"); }
+ check(![[s resultsForQuery:@"zzzzzzzzzzzz" kind:0] count],"unmatched query empty");check([[s resultsForQuery:@"" kind:0] count]==[ex count],"empty query retains all exercises");
+ for(NSDictionary *e in [s resultsForQuery:@"" kind:1])check(![LFStore isStretch:e],"lifts filter");for(NSDictionary *e in [s resultsForQuery:@"" kind:2])check([LFStore isStretch:e],"stretch filter");
+ NSDate *start=[NSDate date];for(int i=0;i<30;i++){NSAutoreleasePool *p=[NSAutoreleasePool new];[s resultsForQuery:@"dumbell shoulder press" kind:0];[p drain];}printf("30 full-catalog typo searches: %.3fs\n",-[start timeIntervalSinceNow]);[s release];printf("PASS search ranking, aliases, typo/transposition, folding and category filters (%u exercises)\n",(unsigned)[ex count]);[pool drain];return 0; }

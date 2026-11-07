@@ -1,6 +1,8 @@
 #import <UIKit/UIKit.h>
 #import "CLAIRequest.h"
 #import "CLCoachViewController.h"
+#import "CLPaper.h"
+#import "LFCoachViewController.h"
 #ifdef HABITS
 #import "HBAI.h"
 #import "HBStore.h"
@@ -17,6 +19,7 @@
 - (BOOL)application:(UIApplication *)app didFinishLaunchingWithOptions:(NSDictionary *)opts {
  window=[[UIWindow alloc] initWithFrame:[[UIScreen mainScreen] bounds]];nav=[[UINavigationController alloc] initWithRootViewController:[[[UIViewController alloc] init] autorelease]];window.rootViewController=nav;[window makeKeyAndVisible];[self performSelector:@selector(run) withObject:nil afterDelay:1];return YES;
 }
+- (void)showNote { NSString *text=[[NSUserDefaults standardUserDefaults] stringForKey:@"ai_last_review"];[nav pushViewController:[[[CLNoteViewController alloc] initWithTitle:@"Claude" text:text] autorelease] animated:YES]; }
 - (void)run {
  NSString *path=[NSHomeDirectory() stringByAppendingPathComponent:@"Documents/live.txt"];freopen([path fileSystemRepresentation],"w",stdout);freopen([path fileSystemRepresentation],"a",stderr);setbuf(stdout,NULL);
  if(![[NSUserDefaults standardUserDefaults] stringForKey:@"ai_claude_key"]){puts("No test credential configured");return;}request=[CLAIRequest new];request.delegate=self;
@@ -37,7 +40,7 @@
 #else
  plan=[[LFAI parseRoutines:text options:options error:&problem] retain];BOOL unchanged=[[LFStore routines] count]==0;
 #endif
- if(!plan || !unchanged){printf("FAIL live plan validation: %s\n",[problem UTF8String]);return;}printf("PASS live plan: %lu valid suggestions; existing data unchanged\n",(unsigned long)[plan count]);phase=1;
+ if(!plan || !unchanged){[text writeToFile:[NSHomeDirectory() stringByAppendingPathComponent:@"Documents/rejected-plan.txt"] atomically:YES encoding:NSUTF8StringEncoding error:NULL];printf("FAIL live plan validation: %s\n",[problem UTF8String]);return;}printf("PASS live plan: %lu valid suggestions; existing data unchanged\n",(unsigned long)[plan count]);phase=1;
 #ifdef HABITS
  [request startSystem:[HBAI weeklySystem] user:[HBAI summary]];
 #else
@@ -49,7 +52,7 @@
 #else
  LFPlanPreviewController *preview=[[[LFPlanPreviewController alloc] initWithRoutines:plan] autorelease];
 #endif
- [nav pushViewController:preview animated:NO];puts("PASS native preview displayed, awaiting explicit Add");}
+ [nav pushViewController:preview animated:NO];preview.navigationItem.rightBarButtonItem=[[[UIBarButtonItem alloc] initWithTitle:@"Coach Note" style:UIBarButtonItemStyleBordered target:self action:@selector(showNote)] autorelease];puts("PASS native preview displayed, awaiting explicit Add");}
 }
 - (void)dealloc {request.delegate=nil;[request cancel];[request release];[plan release];[options release];[nav release];[window release];[super dealloc];}
 @end
