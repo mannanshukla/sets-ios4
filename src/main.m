@@ -1,5 +1,6 @@
 #import <UIKit/UIKit.h>
 #import "LFSkin.h"
+#import "LFStore.h"
 #import "LFWorkoutViewController.h"
 #import "LFCoachViewController.h"
 #import "LFExercisesViewController.h"
@@ -25,7 +26,7 @@
     app.applicationIconBadgeNumber = 0;
     return YES;
 }
-- (void)applicationDidBecomeActive:(UIApplication *)app { app.applicationIconBadgeNumber = 0; }
+- (void)applicationDidBecomeActive:(UIApplication *)app { app.applicationIconBadgeNumber = 0;[LFStore publishWeightsForMeals]; }
 - (void)applicationWillTerminate:(UIApplication *)app { [[NSUserDefaults standardUserDefaults] setInteger:tabs.selectedIndex forKey:@"lf_tab"]; [[NSUserDefaults standardUserDefaults] synchronize]; }
 - (void)dealloc { [tabs release]; [window release]; [super dealloc]; }
 @end

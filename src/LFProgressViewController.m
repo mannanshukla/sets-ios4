@@ -169,6 +169,7 @@ static UITableViewCell *valueCell(UITableView *tv, NSString *t, NSString *d) {
         else if ([o isEqualToString:@"ex"] && [exerciseIds count]) [self tableView:self.tableView didSelectRowAtIndexPath:[NSIndexPath indexPathForRow:0 inSection:2]];
     }
 }
+- (void)shareWeights:(UISwitch *)toggle { if(![LFStore setSharesWeightsWithMeals:toggle.on]) { toggle.on=[LFStore sharesWeightsWithMeals];[[[[UIAlertView alloc] initWithTitle:@"Weight Sharing" message:@"Your weight log could not be prepared. Existing records have been kept unchanged." delegate:nil cancelButtonTitle:@"OK" otherButtonTitles:nil] autorelease] show]; } }
 - (NSString *)weightSummary {
     if (![weights count]) return @"Not logged yet";
     NSDictionary *last = [weights lastObject]; double lw = [[last objectForKey:@"w"] doubleValue], lt = [[last objectForKey:@"t"] doubleValue];
@@ -180,13 +181,14 @@ static UITableViewCell *valueCell(UITableView *tv, NSString *t, NSString *d) {
     return s;
 }
 - (NSInteger)numberOfSectionsInTableView:(UITableView *)tv { return 3; }
-- (NSInteger)tableView:(UITableView *)tv numberOfRowsInSection:(NSInteger)s { return s == 0 ? 2 : s == 1 ? 4 : MAX(1, (NSInteger)[exerciseIds count]); }
+- (NSInteger)tableView:(UITableView *)tv numberOfRowsInSection:(NSInteger)s { return s == 0 ? 3 : s == 1 ? 4 : MAX(1, (NSInteger)[exerciseIds count]); }
 - (NSString *)tableView:(UITableView *)tv titleForHeaderInSection:(NSInteger)s { return s == 0 ? @"Body Weight" : s == 1 ? @"Volume per Week" : @"Exercises"; }
-- (NSString *)tableView:(UITableView *)tv titleForFooterInSection:(NSInteger)s { return s == 2 && [exerciseIds count] ? @"Estimated one-rep max from your best set each workout, and how it has moved since your first." : nil; }
+- (NSString *)tableView:(UITableView *)tv titleForFooterInSection:(NSInteger)s { if(s==0)return @"Share dated weigh-ins with Meals on this iPod. Open Meals after saving a weight to update its trend. No internet is used.";return s == 2 && [exerciseIds count] ? @"Estimated one-rep max from your best set each workout, and how it has moved since your first." : nil; }
 - (CGFloat)tableView:(UITableView *)tv heightForRowAtIndexPath:(NSIndexPath *)ip { return ip.row == 0 && ip.section < 2 ? CHART_H : 44; }
 - (UITableViewCell *)tableView:(UITableView *)tv cellForRowAtIndexPath:(NSIndexPath *)ip {
     if (ip.section == 0) {
         if (ip.row == 0) return chartCell(tv, &weightChart);
+        if (ip.row == 2) { UITableViewCell *c=valueCell(tv,@"Share with Meals",nil);UISwitch *toggle=[[[UISwitch alloc] init] autorelease];toggle.on=[LFStore sharesWeightsWithMeals];[toggle addTarget:self action:@selector(shareWeights:) forControlEvents:UIControlEventValueChanged];c.accessoryView=toggle;return c; }
         UITableViewCell *c = valueCell(tv, @"Log Weight", [self weightSummary]); c.accessoryType = UITableViewCellAccessoryDisclosureIndicator; c.selectionStyle = UITableViewCellSelectionStyleBlue;
         c.detailTextLabel.font = [UIFont systemFontOfSize:13]; c.detailTextLabel.adjustsFontSizeToFitWidth = YES; c.detailTextLabel.minimumFontSize = 10; return c;
     }

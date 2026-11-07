@@ -1,5 +1,6 @@
 #import "LFStore.h"
 #import "ORJSON.h"
+#import "WBBridge.h"
 
 static NSArray *gExercises = nil; static NSDictionary *gById = nil; static BOOL gStretch = NO;
 static NSArray *gWorkouts = nil;   // parsed history, kept until the next save; the stats below read it many times per screen
@@ -83,7 +84,7 @@ static BOOL LFCustomValid(id e) {
 + (NSInteger)restSeconds { id v = [[self d] objectForKey:@"lf_rest"]; return v ? [v integerValue] : 90; }
 + (void)setRestSeconds:(NSInteger)s { [[self d] setInteger:s forKey:@"lf_rest"]; [[self d] synchronize]; }
 + (BOOL)useKg { id v = [[self d] objectForKey:@"lf_kg"]; return v ? [v boolValue] : NO; }
-+ (void)setUseKg:(BOOL)v { [[self d] setBool:v forKey:@"lf_kg"]; [[self d] synchronize]; }
++ (void)setUseKg:(BOOL)v { if(![self freezeBodyWeightUnits])return;[[self d] setBool:v forKey:@"lf_kg"];[[self d] synchronize];[self publishWeightsForMeals]; }
 + (NSDictionary *)bestSetFor:(NSString *)eid {
     NSDictionary *best = nil; double bw = -1;
     for (NSDictionary *w in [self workouts]) for (NSDictionary *ex in [w objectForKey:@"exercises"]) {
@@ -102,21 +103,30 @@ static BOOL LFCustomValid(id e) {
     return v;
 }
 + (double)e1rm:(double)weight reps:(int)reps { if (reps <= 0 || weight <= 0) return 0; return reps == 1 ? weight : weight * (1.0 + reps / 30.0); }
-+ (NSArray *)bodyWeights { id a = [self readJSON:@"bodyweight.json"]; return [a isKindOfClass:[NSArray class]] ? a : [NSArray array]; }
++ (BOOL)freezeBodyWeightUnits {
+ NSString *path=[[self docs] stringByAppendingPathComponent:@"bodyweight.json"];NSData *original=[NSData dataWithContentsOfFile:path];if(!original&&[[NSFileManager defaultManager] fileExistsAtPath:path])return NO;id raw=original?[self readJSON:@"bodyweight.json"]:[NSArray array];NSArray *canonical=WBCanonicalRows(raw,[self useKg]);if(!canonical)return NO;if([canonical isEqual:raw])return YES;
+ NSString *backup=[[self docs] stringByAppendingPathComponent:@"bodyweight-before-units.json"];if(original&&![[NSFileManager defaultManager] fileExistsAtPath:backup]&&![original writeToFile:backup atomically:YES])return NO;
+ return [[ORJSON stringify:canonical] writeToFile:path atomically:YES encoding:NSUTF8StringEncoding error:NULL];
+}
++ (NSArray *)bodyWeights { NSArray *raw=WBCanonicalRows([self readJSON:@"bodyweight.json"]?:[NSArray array],[self useKg]);NSMutableArray *display=[NSMutableArray array];for(NSDictionary *r in raw) { NSMutableDictionary *d=[NSMutableDictionary dictionaryWithDictionary:r];[d setObject:[NSNumber numberWithDouble:[[r objectForKey:@"kg"] doubleValue]/([self useKg]?1:.45359237)] forKey:@"w"];[display addObject:d]; }return display; }
++ (BOOL)sharesWeightsWithMeals { return [[self d] boolForKey:@"lf_share_weight_meals"]; }
++ (BOOL)setSharesWeightsWithMeals:(BOOL)enabled { if(enabled&&![self freezeBodyWeightUnits])return NO;[[self d] setBool:enabled forKey:@"lf_share_weight_meals"];[[self d] synchronize];if(enabled)[self publishWeightsForMeals];else WBPublish(WBSnapshot([NSArray array],NO,[NSDate date]));return YES; }
++ (void)publishWeightsForMeals { if(![self sharesWeightsWithMeals]||![self freezeBodyWeightUnits])return;NSArray *raw=WBCanonicalRows([self readJSON:@"bodyweight.json"]?:[NSArray array],[self useKg]);WBPublish(WBSnapshot(raw,YES,[NSDate date])); }
 + (BOOL)sameDay:(double)a as:(double)b {
     NSCalendar *cal = [NSCalendar currentCalendar]; unsigned u = NSYearCalendarUnit | NSMonthCalendarUnit | NSDayCalendarUnit;
     NSDateComponents *x = [cal components:u fromDate:[NSDate dateWithTimeIntervalSince1970:a]], *y = [cal components:u fromDate:[NSDate dateWithTimeIntervalSince1970:b]];
     return [x year] == [y year] && [x month] == [y month] && [x day] == [y day];
 }
 + (void)logBodyWeight:(double)w {
+    if(!isfinite(w)||w<0||w>10000||![self freezeBodyWeightUnits])return;
     double now = [[NSDate date] timeIntervalSince1970];
     NSMutableArray *a = [NSMutableArray array];
     for (NSDictionary *e in [self bodyWeights]) if (![self sameDay:[[e objectForKey:@"t"] doubleValue] as:now]) [a addObject:e];
-    [a addObject:[NSDictionary dictionaryWithObjectsAndKeys:[NSNumber numberWithDouble:now], @"t", [NSNumber numberWithDouble:w], @"w", nil]];
+    [a addObject:[NSDictionary dictionaryWithObjectsAndKeys:[NSNumber numberWithDouble:now], @"t", [NSNumber numberWithDouble:w], @"w", [NSNumber numberWithDouble:w*([self useKg]?1:.45359237)], @"kg", WBDay([NSDate dateWithTimeIntervalSince1970:now]), @"day", nil]];
     [a sortUsingComparator:^NSComparisonResult(id x, id y) { double p = [[x objectForKey:@"t"] doubleValue], q = [[y objectForKey:@"t"] doubleValue]; return p < q ? NSOrderedAscending : p > q ? NSOrderedDescending : NSOrderedSame; }];
-    [self writeJSON:a name:@"bodyweight.json"];
+    if([[ORJSON stringify:a] writeToFile:[[self docs] stringByAppendingPathComponent:@"bodyweight.json"] atomically:YES encoding:NSUTF8StringEncoding error:NULL])[self publishWeightsForMeals];
 }
-+ (void)deleteBodyWeightAt:(NSUInteger)i { NSMutableArray *a = [NSMutableArray arrayWithArray:[self bodyWeights]]; if (i < [a count]) { [a removeObjectAtIndex:i]; [self writeJSON:a name:@"bodyweight.json"]; } }
++ (void)deleteBodyWeightAt:(NSUInteger)i { if(![self freezeBodyWeightUnits])return;NSMutableArray *a=[NSMutableArray arrayWithArray:[self bodyWeights]];if(i<[a count]) { [a removeObjectAtIndex:i];if([[ORJSON stringify:a] writeToFile:[[self docs] stringByAppendingPathComponent:@"bodyweight.json"] atomically:YES encoding:NSUTF8StringEncoding error:NULL])[self publishWeightsForMeals]; } }
 + (NSArray *)sortedWorkouts {
     NSMutableArray *w = [NSMutableArray arrayWithArray:[self workouts]];
     [w sortUsingComparator:^NSComparisonResult(id x, id y) { double p = [[x objectForKey:@"start"] doubleValue], q = [[y objectForKey:@"start"] doubleValue]; return p < q ? NSOrderedAscending : p > q ? NSOrderedDescending : NSOrderedSame; }];

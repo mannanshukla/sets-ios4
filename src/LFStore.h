@@ -20,6 +20,10 @@
 + (NSDictionary *)bestSetFor:(NSString *)eid;        // {weight, reps} heaviest completed set in history, or nil
 + (double)volumeOf:(NSDictionary *)workout;
 + (double)e1rm:(double)weight reps:(int)reps;      // Epley estimate
++ (BOOL)freezeBodyWeightUnits;
++ (BOOL)sharesWeightsWithMeals;
++ (BOOL)setSharesWeightsWithMeals:(BOOL)enabled;
++ (void)publishWeightsForMeals;
 + (NSArray *)bodyWeights;                           // [{t, w}] sorted oldest first
 + (void)logBodyWeight:(double)w;                    // replaces today's entry
 + (void)deleteBodyWeightAt:(NSUInteger)i;

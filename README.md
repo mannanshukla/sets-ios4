@@ -12,6 +12,10 @@ Every generated plan opens a review screen. Keep the suggestions you want and ta
 
 Only an explicit Ask or Review a New Plan uploads the goal and bounded progress summary. Handoff stays on-device until Send in Claude. Keys live in device preferences, so protect device backups. Claude API billing is separate from a Claude subscription.
 
+## Weight sharing (3.3)
+
+Turn on **Progress → Share with Meals** to reuse Sets weigh-ins in Meals 1.2. Updates stay on the iPod and appear when Meals is opened. Existing entries are backed up before adding stable kilogram values, so changing units preserves their meaning. [Data ownership and checks](docs/WEIGHT_LINK.md).
+
 ## Catalog review (3.2)
 
 Adds 20 common machine, cable, barbell and bodyweight movements after comparing established exercise libraries. Search now recognizes Nordic curls, ring rows, reverse lunges and more familiar names for existing entries. Original IDs and progress remain unchanged. [Added movements, sources and checks](docs/CATALOG_REVIEW.md).
