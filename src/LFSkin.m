@@ -57,13 +57,10 @@ static UIImage *paperImage(CGSize sz, BOOL selected) {
 - (void)layoutSubviews { [super layoutSubviews]; UIImage *img = paperImage(self.bounds.size, selected); self.layer.contents = (id)img.CGImage; self.layer.contentsScale = img ? img.scale : 1; }
 @end
 void LFSkinPaperTable(UITableView *tv) {
-    LFPaperBackground *bg = [[[LFPaperBackground alloc] initWithFrame:tv.bounds] autorelease]; tv.backgroundView = bg; tv.backgroundColor = [UIColor clearColor]; tv.separatorStyle = UITableViewCellSeparatorStyleNone;
+tv.backgroundView=nil;tv.backgroundColor=JRPaper();tv.separatorStyle=UITableViewCellSeparatorStyleSingleLine;tv.separatorColor=JRRule();
 }
 void LFPaperCell(UITableViewCell *c) {
-    if ([c.backgroundView isKindOfClass:[LFPaperRow class]]) return;
-    c.backgroundView = [[[LFPaperRow alloc] initWithFrame:CGRectMake(0, 0, 320, RULE_H)] autorelease];
-    LFPaperRow *sel = [[[LFPaperRow alloc] initWithFrame:CGRectMake(0, 0, 320, RULE_H)] autorelease]; sel.selected = YES; c.selectedBackgroundView = sel;
-    c.backgroundColor = [UIColor clearColor]; c.textLabel.backgroundColor = [UIColor clearColor]; c.detailTextLabel.backgroundColor = [UIColor clearColor];
+c.backgroundView=nil;c.selectedBackgroundView=nil;c.backgroundColor=JRPaper();c.textLabel.backgroundColor=[UIColor clearColor];c.detailTextLabel.backgroundColor=[UIColor clearColor];
 }
 UIView *LFPaperHeader(CGFloat width, CGFloat height, NSString *text) {
     LFPaperRow *v = [[[LFPaperRow alloc] initWithFrame:CGRectMake(0, 0, width, height)] autorelease]; v.autoresizingMask = UIViewAutoresizingFlexibleWidth;
