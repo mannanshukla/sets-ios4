@@ -1,6 +1,6 @@
 # Sets
 
-A stripped-down workout log for iPod touch 4. Your log stays on the device. 880 built-in exercises, with 1,718 photos from free-exercise-db, including stretches logged as a hold time, a ratchet wheel for weight and reps, rest timer, body weight and estimated one-rep-max charts, and Claude routines grounded in your goal, available equipment, time and recent training.
+A stripped-down workout log for iPod touch 4. Your log stays on the device. 900 built-in exercises, with 1,718 photos from free-exercise-db, including stretches logged as a hold time, a ratchet wheel for weight and reps, rest timer, body weight and estimated one-rep-max charts, and Claude routines grounded in your goal, available equipment, time and recent training.
 
 ## Coach (3.0)
 
@@ -11,6 +11,10 @@ In **Settings → Sets → AI Coach**, choose Claude, enter an Anthropic API key
 Every generated plan opens a review screen. Keep the suggestions you want and tap **Add** to save them; existing plans stay. **Discuss in Claude** opens an editable draft in Claude 3.2 or newer. **Use Draft** puts it in a new chat; **Send** is a separate action. Neither handoff nor coaching changes logs.
 
 Only an explicit Ask or Review a New Plan uploads the goal and bounded progress summary. Handoff stays on-device until Send in Claude. Keys live in device preferences, so protect device backups. Claude API billing is separate from a Claude subscription.
+
+## Catalog review (3.2)
+
+Adds 20 common machine, cable, barbell and bodyweight movements after comparing established exercise libraries. Search now recognizes Nordic curls, ring rows, reverse lunges and more familiar names for existing entries. Original IDs and progress remain unchanged. [Added movements, sources and checks](docs/CATALOG_REVIEW.md).
 
 ## Exercise library (3.1)
 
