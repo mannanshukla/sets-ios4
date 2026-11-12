@@ -1,12 +1,14 @@
 #import "LFCustomExercise.h"
 #import "LFStore.h"
 #import "CLPaper.h"
+#import "LFSkin.h"
 @interface LFCustomChoices : UITableViewController { NSArray *choices; NSString *key; LFCustomExercise *owner; }
 - (id)initWithItems:(NSArray *)items key:(NSString *)key owner:(LFCustomExercise *)owner;
 @end
 @implementation LFCustomChoices
 - (id)initWithItems:(NSArray *)items key:(NSString *)k owner:(LFCustomExercise *)o { if((self=[super initWithStyle:UITableViewStyleGrouped])) { choices=[items copy];key=[k copy];owner=[o retain];self.title=[k capitalizedString]; }return self; }
 - (void)viewDidLoad { [super viewDidLoad];CLPaperTable(self.tableView); }
+- (void)viewWillAppear:(BOOL)a { [super viewWillAppear:a];LFRestoreScroll(self); }
 - (void)dealloc { [choices release];[key release];[owner release];[super dealloc]; }
 - (NSInteger)tableView:(UITableView *)t numberOfRowsInSection:(NSInteger)s { return [choices count]; }
 - (UITableViewCell *)tableView:(UITableView *)t cellForRowAtIndexPath:(NSIndexPath *)p { UITableViewCell *c=[[[UITableViewCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:nil] autorelease];NSString *v=[choices objectAtIndex:p.row];c.textLabel.text=[v capitalizedString];c.accessoryType=[v isEqual:[owner valueForKey:key]]?UITableViewCellAccessoryCheckmark:UITableViewCellAccessoryNone;return c; }
@@ -17,7 +19,7 @@
 - (id)init { if((self=[super initWithStyle:UITableViewStyleGrouped])) { self.title=@"New Exercise";muscle=[@"quadriceps" copy];equipment=[@"machine" copy]; }return self; }
 - (UITextField *)newField:(NSString *)placeholder { UITextField *f=[[UITextField alloc] initWithFrame:CGRectZero];f.placeholder=placeholder;f.font=[UIFont systemFontOfSize:16];f.contentVerticalAlignment=UIControlContentVerticalAlignmentCenter;f.delegate=self;f.returnKeyType=UIReturnKeyDone;return f; }
 - (void)viewDidLoad { [super viewDidLoad];CLPaperTable(self.tableView);if(!name)name=[self newField:@"Exercise name"];if(!aliases)aliases=[self newField:@"Other names, separated by commas"];if(!logging) { logging=[[UISegmentedControl alloc] initWithItems:[NSArray arrayWithObjects:@"Weight × reps",@"Timed hold",nil]];logging.segmentedControlStyle=UISegmentedControlStyleBar;logging.selectedSegmentIndex=0; }self.navigationItem.rightBarButtonItem=[[[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemSave target:self action:@selector(save)] autorelease]; }
-- (void)viewWillAppear:(BOOL)a { [super viewWillAppear:a];[self.tableView reloadData]; }
+- (void)viewWillAppear:(BOOL)a { [super viewWillAppear:a];[self.tableView reloadData];LFRestoreScroll(self); }
 - (void)dealloc { name.delegate=nil;aliases.delegate=nil;[name release];[aliases release];[logging release];[muscle release];[equipment release];[super dealloc]; }
 - (BOOL)textFieldShouldReturn:(UITextField *)f { [f resignFirstResponder];return YES; }
 - (BOOL)textField:(UITextField *)f shouldChangeCharactersInRange:(NSRange)r replacementString:(NSString *)s { return [f.text length]-r.length+[s length]<=(f==name?80:300); }

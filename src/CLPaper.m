@@ -2,6 +2,7 @@
 #import "CLPaper.h"
 #import "ORTextLayout.h"
 #import "ORMarkdown.h"
+#import "LFSkin.h"
 #import <QuartzCore/QuartzCore.h>
 void CLPaperTable(UITableView *t) {
 t.backgroundView=nil;t.backgroundColor=JRPaper();t.separatorColor=JRRule();
@@ -19,6 +20,7 @@ UIImage *CLCoachIcon(void) { UIGraphicsBeginImageContextWithOptions(CGSizeMake(2
 - (id)initWithTitle:(NSString *)title text:(NSString *)text { if((self=[super initWithStyle:UITableViewStylePlain])) { self.title=title;note=[text copy]; }return self; }
 - (void)viewDidLoad { [super viewDidLoad];CLPaperTable(self.tableView);self.tableView.separatorStyle=UITableViewCellSeparatorStyleNone;layout=[[ORTextLayout alloc] initWithText:note markdown:YES width:self.tableView.bounds.size.width-36];self.navigationItem.rightBarButtonItem=[[[UIBarButtonItem alloc] initWithTitle:@"Copy" style:UIBarButtonItemStyleBordered target:self action:@selector(copyNote)] autorelease];self.tableView.tableFooterView=[[[UIView alloc] initWithFrame:CGRectMake(0,0,1,24)] autorelease]; }
 - (void)copyNote { [UIPasteboard generalPasteboard].string=[ORMarkdown plainText:note]; }
+- (void)viewWillAppear:(BOOL)a { [super viewWillAppear:a];LFRestoreScroll(self); }
 - (void)viewDidUnload { [layout release];layout=nil;[super viewDidUnload]; }
 - (void)dealloc { [layout release];[note release];[super dealloc]; }
 - (NSInteger)tableView:(UITableView *)t numberOfRowsInSection:(NSInteger)s { return [layout pageCount]; }
@@ -36,7 +38,7 @@ UIImage *CLCoachIcon(void) { UIGraphicsBeginImageContextWithOptions(CGSizeMake(2
 @implementation CLNotesViewController
 - (id)init { if((self=[super initWithStyle:UITableViewStyleGrouped]))self.title=@"Coach Notes";return self; }
 - (void)viewDidLoad { [super viewDidLoad];CLPaperTable(self.tableView); }
-- (void)viewWillAppear:(BOOL)a { [super viewWillAppear:a];[notes release];notes=[CLCoachNotes() copy];[self.tableView reloadData]; }
+- (void)viewWillAppear:(BOOL)a { [super viewWillAppear:a];[notes release];notes=[CLCoachNotes() copy];[self.tableView reloadData];LFRestoreScroll(self); }
 - (void)dealloc { [notes release];[super dealloc]; }
 - (NSInteger)tableView:(UITableView *)t numberOfRowsInSection:(NSInteger)s { return MAX(1,[notes count]); }
 - (UITableViewCell *)tableView:(UITableView *)t cellForRowAtIndexPath:(NSIndexPath *)p { UITableViewCell *c=[[[UITableViewCell alloc] initWithStyle:UITableViewCellStyleSubtitle reuseIdentifier:nil] autorelease];c.textLabel.font=[UIFont boldSystemFontOfSize:16];c.textLabel.text=[notes count]?[[notes objectAtIndex:p.row] objectForKey:@"question"]:@"Your notes will appear here.";c.accessoryType=[notes count]?UITableViewCellAccessoryDisclosureIndicator:UITableViewCellAccessoryNone;if([notes count]) { NSDate *date=[[notes objectAtIndex:p.row] objectForKey:@"date"];if(date)c.detailTextLabel.text=[NSDateFormatter localizedStringFromDate:date dateStyle:NSDateFormatterMediumStyle timeStyle:NSDateFormatterShortStyle]; }return c; }
@@ -45,15 +47,16 @@ UIImage *CLCoachIcon(void) { UIGraphicsBeginImageContextWithOptions(CGSizeMake(2
 @implementation CLCheckInController
 - (id)initWithSource:(NSString *)s { if((self=[super initWithStyle:UITableViewStyleGrouped])) { source=[s copy];self.title=@"Check-In"; }return self; }
 - (UISegmentedControl *)newSegment:(NSArray *)items value:(NSString *)value fallback:(NSInteger)fallback { UISegmentedControl *v=[[UISegmentedControl alloc] initWithItems:items];v.segmentedControlStyle=UISegmentedControlStyleBar;NSUInteger i=[items indexOfObject:value?:@""];v.selectedSegmentIndex=i==NSNotFound?fallback:i;return v; }
-- (void)viewDidLoad { [super viewDidLoad];CLPaperTable(self.tableView);NSDictionary *d=[[NSUserDefaults standardUserDefaults] dictionaryForKey:@"coach_checkin"];
+// The inputs outlive the view: an unloaded check-in (another tab, the app in the background) keeps what was typed but not saved.
+- (void)viewDidLoad { [super viewDidLoad];CLPaperTable(self.tableView);self.navigationItem.rightBarButtonItem=[[[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemSave target:self action:@selector(save)] autorelease];if(goal)return;NSDictionary *d=[[NSUserDefaults standardUserDefaults] dictionaryForKey:@"coach_checkin"];
     goal=[[UITextView alloc] initWithFrame:CGRectZero];goal.delegate=self;goal.font=[UIFont systemFontOfSize:16];goal.backgroundColor=[UIColor clearColor];goal.text=[d objectForKey:@"goal"]?:@"";
     energy=[self newSegment:[NSArray arrayWithObjects:@"Low",@"Okay",@"High",nil] value:[d objectForKey:@"energy"] fallback:1];
     recovery=[self newSegment:[source isEqual:@"Cards"]?[NSArray arrayWithObjects:@"Struggling",@"Okay",@"Confident",nil]:[NSArray arrayWithObjects:@"Sore",@"Okay",@"Fresh",nil] value:[d objectForKey:@"recovery"] fallback:1];
     time=[self newSegment:[source isEqual:@"Cards"]?[NSArray arrayWithObjects:@"5",@"10",@"20",@"30",nil]:[NSArray arrayWithObjects:@"15",@"30",@"45",@"60",nil] value:[d objectForKey:@"time"] fallback:1];
-    self.navigationItem.rightBarButtonItem=[[[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemSave target:self action:@selector(save)] autorelease];
 }
+- (void)viewWillAppear:(BOOL)a { [super viewWillAppear:a];LFRestoreScroll(self); }
 - (void)releaseInputs { goal.delegate=nil;[goal release];goal=nil;[energy release];energy=nil;[recovery release];recovery=nil;[time release];time=nil; }
-- (void)viewDidUnload { [self releaseInputs];[super viewDidUnload]; }
+- (void)viewDidUnload { [goal resignFirstResponder];[super viewDidUnload]; }
 - (void)dealloc { [self releaseInputs];[source release];[super dealloc]; }
 - (void)save { NSDictionary *d=[NSDictionary dictionaryWithObjectsAndKeys:goal.text?:@"",@"goal",[energy titleForSegmentAtIndex:energy.selectedSegmentIndex],@"energy",[recovery titleForSegmentAtIndex:recovery.selectedSegmentIndex],@"recovery",[time titleForSegmentAtIndex:time.selectedSegmentIndex],@"time",[NSDate date],@"date",nil];[[NSUserDefaults standardUserDefaults] setObject:d forKey:@"coach_checkin"];[[NSUserDefaults standardUserDefaults] synchronize];[self.navigationController popViewControllerAnimated:YES]; }
 - (BOOL)textView:(UITextView *)v shouldChangeTextInRange:(NSRange)r replacementText:(NSString *)t { return [v.text length]-r.length+[t length]<=1000; }

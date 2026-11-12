@@ -31,9 +31,22 @@ static double weightStep(void) { return [LFStore useKg] ? 0.25 : 0.5; }
 }
 + (void)startEmpty { [self startFromRoutine:[NSDictionary dictionaryWithObjectsAndKeys:@"Workout", @"name", [NSArray array], @"exercises", nil]]; }
 
-- (id)init { if ((self = [super initWithStyle:UITableViewStylePlain])) { self.title = @"Workout"; self.tabBarItem.title = @"Workout"; } return self; }
+- (id)init {
+    if ((self = [super initWithStyle:UITableViewStylePlain])) {
+        self.title = @"Workout"; self.tabBarItem.title = @"Workout";
+        [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(stopTicking) name:UIApplicationDidEnterBackgroundNotification object:nil];
+        [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(resumeTicking) name:UIApplicationWillEnterForegroundNotification object:nil];
+    }
+    return self;
+}
 - (void)viewDidLoad { [super viewDidLoad]; LFSkinPaperTable(self.tableView); }
-- (void)dealloc { [tick invalidate]; [tick release]; [active release]; [exercises release]; [routines release]; [drum release]; [picker release]; [drumTitle release]; [super dealloc]; }
+- (void)tearDownDrum { picker.delegate = nil; picker.dataSource = nil; [drum removeFromSuperview]; [drum release]; drum = nil; [picker release]; picker = nil; [drumTitle release]; drumTitle = nil; }
+- (void)dealloc { [[NSNotificationCenter defaultCenter] removeObserver:self]; [tick invalidate]; [tick release]; [active release]; [exercises release]; [routines release]; [self tearDownDrum]; [super dealloc]; }
+// The clock ticks only while the screen is up; coming back from the background it starts again and catches up at once.
+- (void)stopTicking { [tick invalidate]; [tick release]; tick = nil; }
+- (void)resumeTicking { if (!LFViewIsVisible(self)) return; if (!tick) tick = [[NSTimer scheduledTimerWithTimeInterval:1 target:self selector:@selector(ticked) userInfo:nil repeats:YES] retain]; [self ticked]; }
+// The wheel lives in the tab bar's view, below the screen when closed. A closed one is rebuilt on the next tap.
+- (void)trimMemory { if (drum && drum.frame.origin.y >= drum.superview.bounds.size.height - 1) [self tearDownDrum]; }
 - (void)showRoutines { [self.navigationController pushViewController:[[[LFRoutinesViewController alloc] init] autorelease] animated:YES]; }
 - (void)load {
     NSDictionary *a = [LFStore activeWorkout];
@@ -48,13 +61,13 @@ static double weightStep(void) { return [LFStore useKg] ? 0.25 : 0.5; }
     }
     [self.tableView reloadData];
 }
-- (void)viewWillAppear:(BOOL)a { [super viewWillAppear:a]; [self load]; if (!tick) tick = [[NSTimer scheduledTimerWithTimeInterval:1 target:self selector:@selector(ticked) userInfo:nil repeats:YES] retain]; [self ticked]; }
+- (void)viewWillAppear:(BOOL)a { [super viewWillAppear:a]; [self load]; if (!tick) tick = [[NSTimer scheduledTimerWithTimeInterval:1 target:self selector:@selector(ticked) userInfo:nil repeats:YES] retain]; [self ticked]; LFRestoreScroll(self); }
 - (void)viewDidAppear:(BOOL)a {
     [super viewDidAppear:a];
     NSUserDefaults *d = [NSUserDefaults standardUserDefaults];
     if ([d objectForKey:@"lf_test_pick"] && active) { NSInteger t = [d integerForKey:@"lf_test_pick"]; [d removeObjectForKey:@"lf_test_pick"]; [d synchronize]; UIButton *b = [[[UIButton alloc] init] autorelease]; b.tag = t; [self performSelector:@selector(openDrum:) withObject:b afterDelay:0.4]; }
 }
-- (void)viewWillDisappear:(BOOL)a { [super viewWillDisappear:a]; [self closeDrum]; [tick invalidate]; [tick release]; tick = nil; }
+- (void)viewWillDisappear:(BOOL)a { [super viewWillDisappear:a]; [self closeDrum]; [self stopTicking]; }
 - (void)ticked {
     if (!active) return;
     NSTimeInterval now = [[NSDate date] timeIntervalSince1970];
@@ -320,15 +333,23 @@ static double weightStep(void) { return [LFStore useKg] ? 0.25 : 0.5; }
 - (id)init { if ((self = [super initWithStyle:UITableViewStylePlain])) { self.title = @"History"; self.tabBarItem.title = @"History"; } return self; }
 - (void)viewDidLoad { [super viewDidLoad]; LFSkinPaperTable(self.tableView); }
 - (void)tableView:(UITableView *)tv willDisplayCell:(UITableViewCell *)c forRowAtIndexPath:(NSIndexPath *)ip { LFPaperCell(c); }
-- (void)dealloc { [workouts release]; [super dealloc]; }
-- (void)viewWillAppear:(BOOL)a { [super viewWillAppear:a]; [workouts release]; workouts = [[LFStore workouts] retain]; [self.tableView reloadData]; }
+- (void)dealloc { [workouts release]; [dateFormat release]; [super dealloc]; }
+- (void)viewWillAppear:(BOOL)a { [super viewWillAppear:a]; [workouts release]; workouts = [[LFStore workouts] retain]; [self.tableView reloadData]; LFRestoreScroll(self); }
+// Off screen, let go of the parsed history and the formatter; viewWillAppear reads them again.
+- (void)trimMemory {
+    [dateFormat release]; dateFormat = nil;
+    if (LFViewIsVisible(self)) return;
+    [workouts release]; workouts = nil;
+    if ([self isViewLoaded]) [self.tableView reloadData];
+}
 - (NSInteger)tableView:(UITableView *)tv numberOfRowsInSection:(NSInteger)s { return MAX(1, (NSInteger)[workouts count]); }
 - (UITableViewCell *)tableView:(UITableView *)tv cellForRowAtIndexPath:(NSIndexPath *)ip {
     if (![workouts count]) return LFPaperNoteCell(@"No workouts yet. Finish one and it's written down here.");
     UITableViewCell *c = [tv dequeueReusableCellWithIdentifier:@"h"];
     if (!c) { c = [[[UITableViewCell alloc] initWithStyle:UITableViewCellStyleSubtitle reuseIdentifier:@"h"] autorelease]; c.accessoryType = UITableViewCellAccessoryDisclosureIndicator; c.detailTextLabel.textColor = [UIColor colorWithWhite:0.45 alpha:1]; }
     NSDictionary *w = [workouts objectAtIndex:ip.row];
-    NSDateFormatter *f = [[[NSDateFormatter alloc] init] autorelease]; [f setDateFormat:@"EEE, MMM d  h:mm a"];
+    if (!dateFormat) { dateFormat = [[NSDateFormatter alloc] init]; [dateFormat setDateFormat:@"EEE, MMM d  h:mm a"]; }   // one per list, not one per row
+    NSDateFormatter *f = dateFormat;
     c.textLabel.text = [NSString stringWithFormat:@"%@", [w objectForKey:@"name"]];
     c.detailTextLabel.text = [NSString stringWithFormat:@"%@ · %@ · %.0f %@", [f stringFromDate:[NSDate dateWithTimeIntervalSince1970:[[w objectForKey:@"start"] doubleValue]]], fmtTime([[w objectForKey:@"end"] doubleValue] - [[w objectForKey:@"start"] doubleValue]), [LFStore volumeOf:w], unit()];
     return c;
@@ -345,6 +366,7 @@ static double weightStep(void) { return [LFStore useKg] ? 0.25 : 0.5; }
 @implementation LFWorkoutDetailViewController
 - (id)initWithWorkout:(NSDictionary *)w { if ((self = [super initWithStyle:UITableViewStyleGrouped])) { workout = [w retain]; self.title = [w objectForKey:@"name"]; } return self; }
 - (void)dealloc { [workout release]; [super dealloc]; }
+- (void)viewWillAppear:(BOOL)a { [super viewWillAppear:a]; LFRestoreScroll(self); }
 - (NSInteger)numberOfSectionsInTableView:(UITableView *)tv { return [[workout objectForKey:@"exercises"] count]; }
 - (NSInteger)tableView:(UITableView *)tv numberOfRowsInSection:(NSInteger)s { return [[[[workout objectForKey:@"exercises"] objectAtIndex:s] objectForKey:@"sets"] count]; }
 - (NSString *)tableView:(UITableView *)tv titleForHeaderInSection:(NSInteger)s { return [[LFStore exercise:[[[workout objectForKey:@"exercises"] objectAtIndex:s] objectForKey:@"id"]] objectForKey:@"name"]; }

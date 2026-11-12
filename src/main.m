@@ -26,6 +26,32 @@
     app.applicationIconBadgeNumber = 0;
     return YES;
 }
+// iOS 5 keeps a suspended app's memory resident until it kills the app, and on a 256 MB iPod that squeezes whatever is
+// playing. Going to the background, and on memory warnings, every screen that is not showing drops its view the way a
+// memory warning would; screens drop their own rebuildable state; the parsed catalog and history go unless a showing
+// list still holds them, so they are never parsed twice. All of it comes back on next use.
+- (void)collect:(UIViewController *)vc into:(NSMutableArray *)all {
+    if (!vc || [all indexOfObjectIdenticalTo:vc] != NSNotFound) return;
+    [all addObject:vc];
+    if ([vc isKindOfClass:[UITabBarController class]]) for (UIViewController *c in [(UITabBarController *)vc viewControllers]) [self collect:c into:all];
+    if ([vc isKindOfClass:[UINavigationController class]]) for (UIViewController *c in [(UINavigationController *)vc viewControllers]) [self collect:c into:all];
+    [self collect:vc.modalViewController into:all];
+}
+- (void)trimMemory {
+    NSMutableArray *all = [NSMutableArray array]; [self collect:tabs into:all];
+    BOOL keepCatalog = NO, keepHistory = NO;
+    for (UIViewController *vc in all) {
+        if ([vc isKindOfClass:[UITabBarController class]] || [vc isKindOfClass:[UINavigationController class]]) continue;
+        if (LFViewIsVisible(vc)) { keepCatalog |= [vc isKindOfClass:[LFExercisesViewController class]]; keepHistory |= [vc isKindOfClass:[LFHistoryViewController class]] || [vc isKindOfClass:[LFProgressViewController class]]; }
+        else LFUnloadHiddenView(vc);
+        if ([vc conformsToProtocol:@protocol(LFTrimMemory)]) [(id<LFTrimMemory>)vc trimMemory];
+    }
+    if (!keepCatalog) [LFExercisesViewController releaseSharedIndex];
+    [LFStore trimCachesKeepingCatalog:keepCatalog history:keepHistory];
+    LFSkinPurgeCache();
+}
+- (void)applicationDidEnterBackground:(UIApplication *)app { [self trimMemory]; }
+- (void)applicationDidReceiveMemoryWarning:(UIApplication *)app { [self trimMemory]; }
 - (void)applicationDidBecomeActive:(UIApplication *)app { app.applicationIconBadgeNumber = 0;[LFStore publishWeightsForMeals]; }
 - (void)applicationWillTerminate:(UIApplication *)app { [[NSUserDefaults standardUserDefaults] setInteger:tabs.selectedIndex forKey:@"lf_tab"]; [[NSUserDefaults standardUserDefaults] synchronize]; }
 - (void)dealloc { [tabs release]; [window release]; [super dealloc]; }

@@ -5,10 +5,18 @@
 #import "LFSearch.h"
 #import "LFCustomExercise.h"
 
+// Building the index normalizes every name, alias and tag in the catalog, the slowest step in opening the list on an A4.
+// The tab and each Add Exercise picker share one index for the current catalog instead of building their own.
+static NSArray *sharedCatalog = nil; static LFSearch *sharedIndex = nil;
+static LFSearch *indexFor(NSArray *catalog) {
+    if (catalog != sharedCatalog) { [sharedIndex release]; sharedIndex = [[LFSearch alloc] initWithExercises:catalog]; [sharedCatalog release]; sharedCatalog = [catalog retain]; }
+    return sharedIndex;
+}
 @implementation LFExercisesViewController
 @synthesize picker;
++ (void)releaseSharedIndex { [sharedIndex release]; sharedIndex = nil; [sharedCatalog release]; sharedCatalog = nil; }
 - (id)init {
-    if ((self = [super initWithStyle:UITableViewStylePlain])) { self.title = @"Exercises"; self.tabBarItem.title = @"Exercises"; indexedExercises=[[LFStore exercises] retain];searchIndex=[[LFSearch alloc] initWithExercises:indexedExercises]; rows = [[NSMutableArray alloc] init]; [self rebuild];
+    if ((self = [super initWithStyle:UITableViewStylePlain])) { self.title = @"Exercises"; self.tabBarItem.title = @"Exercises"; rows = [[NSMutableArray alloc] init];   // the catalog and index load in viewWillAppear, when the list is first shown
         UISegmentedControl *seg = [[[UISegmentedControl alloc] initWithItems:[NSArray arrayWithObjects:@"All", @"Lifts", @"Stretches", nil]] autorelease]; seg.segmentedControlStyle = UISegmentedControlStyleBar; seg.selectedSegmentIndex = 0; [seg addTarget:self action:@selector(kindChanged:) forControlEvents:UIControlEventValueChanged]; self.navigationItem.titleView = seg; }
     return self;
 }
@@ -21,7 +29,14 @@
 }
 - (void)updateResults { [NSObject cancelPreviousPerformRequestsWithTarget:self selector:@selector(updateResults) object:nil];[self rebuild];[self.tableView reloadData]; }
 - (void)viewWillDisappear:(BOOL)a { [NSObject cancelPreviousPerformRequestsWithTarget:self];[search resignFirstResponder];[super viewWillDisappear:a]; }
-- (void)viewWillAppear:(BOOL)a { [super viewWillAppear:a];NSArray *current=[LFStore exercises];if(current!=indexedExercises) { [indexedExercises release];indexedExercises=[current retain];[searchIndex release];searchIndex=[[LFSearch alloc] initWithExercises:indexedExercises]; }[self updateResults]; }
+- (void)viewWillAppear:(BOOL)a { [super viewWillAppear:a];NSArray *current=[LFStore exercises];if(current!=indexedExercises) { [indexedExercises release];indexedExercises=[current retain];[searchIndex release];searchIndex=[indexFor(current) retain]; }[self updateResults];LFRestoreScroll(self); }
+// Off screen, let go of the catalog and index (about 2.5 MB together); viewWillAppear rebuilds them.
+- (void)trimMemory {
+    if (LFViewIsVisible(self)) return;
+    [NSObject cancelPreviousPerformRequestsWithTarget:self selector:@selector(updateResults) object:nil];
+    [searchIndex release]; searchIndex = nil; [indexedExercises release]; indexedExercises = nil; [rows removeAllObjects]; [groups release]; groups = nil;
+    if ([self isViewLoaded]) [self.tableView reloadData];   // the table must not keep rows the data source no longer has
+}
 - (void)viewDidUnload { search.delegate=nil;[search release];search=nil;[super viewDidUnload]; }
 - (void)viewDidLoad {
     [super viewDidLoad];
@@ -48,9 +63,11 @@
     NSDictionary *e = [[rows objectAtIndex:ip.section] objectAtIndex:ip.row];
     c.textLabel.text = [e objectForKey:@"name"];
     c.detailTextLabel.text = [NSString stringWithFormat:@"%@ · %@", [e objectForKey:@"equipment"] ?: @"", [e objectForKey:@"level"] ?: @""];
+    // crop to a 64x44 thumbnail; the pool frees each decoded photo here, not after a whole fast scroll's worth of rows
+    NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
     NSString *path=[LFStore imagePath:[e objectForKey:@"id"] frame:0];UIImage *img = path?[UIImage imageWithContentsOfFile:path]:nil;
-    // crop to a 64x44 thumbnail
     if (img) { UIGraphicsBeginImageContextWithOptions(CGSizeMake(66, 44), YES, 0); [img drawInRect:CGRectMake(0, 0, 66, 44)]; c.imageView.image = UIGraphicsGetImageFromCurrentImageContext(); UIGraphicsEndImageContext(); } else c.imageView.image = nil;
+    [pool drain];
     c.accessoryType = picker ? UITableViewCellAccessoryNone : UITableViewCellAccessoryDisclosureIndicator;
     return c;
 }
@@ -77,10 +94,24 @@
         if ([[e objectForKey:@"mechanic"] isKindOfClass:[NSString class]]) [f addObject:[NSArray arrayWithObjects:@"Type", [[e objectForKey:@"mechanic"] capitalizedString], nil]];
         if ([[e objectForKey:@"force"] isKindOfClass:[NSString class]]) [f addObject:[NSArray arrayWithObjects:@"Force", [[e objectForKey:@"force"] capitalizedString], nil]];
         facts = [f retain]; steps = [([e objectForKey:@"instructions"] ?: [NSArray array]) retain]; best = [[LFStore bestSetFor:[e objectForKey:@"id"]] retain];
+        [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(stopFrames) name:UIApplicationDidEnterBackgroundNotification object:nil];
+        [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(resumeFrames) name:UIApplicationWillEnterForegroundNotification object:nil];
     }
     return self;
 }
-- (void)dealloc { [exercise release]; [frame release]; [steps release]; [facts release]; [best release]; [super dealloc]; }
+- (void)dealloc { [[NSNotificationCenter defaultCenter] removeObserver:self]; [frame stopAnimating]; [exercise release]; [frame release]; [steps release]; [facts release]; [best release]; [super dealloc]; }
+- (void)loadFrames {
+    NSMutableArray *imgs = [NSMutableArray array];
+    for (int i = 0; i < 2; i++) { NSString *p = [LFStore imagePath:[exercise objectForKey:@"id"] frame:i]; UIImage *im = p ? [UIImage imageWithContentsOfFile:p] : nil; if (im) [imgs addObject:im]; }
+    if ([imgs count]) frame.image = [imgs objectAtIndex:0];
+    if ([imgs count] > 1) { frame.animationImages = imgs; frame.animationDuration = 2.4; frame.animationRepeatCount = 0; }
+}
+// The photos play only while the screen is up: background stops them and lets the second frame go; coming back replays them.
+- (void)stopFrames { [frame stopAnimating]; frame.animationImages = nil; }
+- (void)playFrames { if (frame && !frame.animationImages && [[exercise objectForKey:@"images"] count] > 1) [self loadFrames]; if (frame.animationImages) [frame startAnimating]; }
+- (void)resumeFrames { if (LFViewIsVisible(self)) [self playFrames]; }
+- (void)trimMemory { if (!LFViewIsVisible(self)) [self stopFrames]; }
+- (void)viewDidUnload { [self stopFrames]; [frame release]; frame = nil; [super viewDidUnload]; }
 - (void)viewDidLoad {
     [super viewDidLoad];
     if(![[exercise objectForKey:@"images"] count])return;
@@ -92,13 +123,10 @@
     card.layer.shadowColor = [UIColor blackColor].CGColor; card.layer.shadowOpacity = 0.18; card.layer.shadowOffset = CGSizeMake(0, 1); card.layer.shadowRadius = 2;
     UIView *clip = [[[UIView alloc] initWithFrame:CGRectMake(1, 1, cardW - 2, imgH)] autorelease]; clip.clipsToBounds = YES; clip.layer.cornerRadius = 7; [card addSubview:clip];
     frame = [[UIImageView alloc] initWithFrame:clip.bounds]; frame.contentMode = UIViewContentModeScaleAspectFit; frame.backgroundColor = [UIColor colorWithWhite:0.1 alpha:1];
-    NSMutableArray *imgs = [NSMutableArray array];
-    for (int i = 0; i < 2; i++) { NSString *p = [LFStore imagePath:[exercise objectForKey:@"id"] frame:i]; UIImage *im = p ? [UIImage imageWithContentsOfFile:p] : nil; if (im) [imgs addObject:im]; }
-    if ([imgs count]) frame.image = [imgs objectAtIndex:0];
-    if ([imgs count] > 1) { frame.animationImages = imgs; frame.animationDuration = 2.4; frame.animationRepeatCount = 0; }
+    [self loadFrames];
     [clip addSubview:frame]; [hdr addSubview:card]; self.tableView.tableHeaderView = hdr;
 }
-- (void)viewWillAppear:(BOOL)a { [super viewWillAppear:a]; if (frame.animationImages) [frame startAnimating]; }
+- (void)viewWillAppear:(BOOL)a { [super viewWillAppear:a]; [self playFrames]; LFRestoreScroll(self); }
 - (void)viewWillDisappear:(BOOL)a { [frame stopAnimating]; [super viewWillDisappear:a]; }
 - (NSInteger)numberOfSectionsInTableView:(UITableView *)tv { return 2 + (best ? 1 : 0); }
 - (NSInteger)stepsSection { return best ? 2 : 1; }

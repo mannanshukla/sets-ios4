@@ -1,10 +1,11 @@
 #import <UIKit/UIKit.h>
 #import "LFExercisesViewController.h"
 #import "CLAIRequest.h"
+#import "LFSkin.h"
 @interface LFRoutinesViewController : UITableViewController { NSMutableArray *routines; }
 - (void)reload;
 @end
-@interface LFRoutineEditViewController : UITableViewController <LFExercisePicker, UITextFieldDelegate, UIPickerViewDataSource, UIPickerViewDelegate> {
+@interface LFRoutineEditViewController : UITableViewController <LFExercisePicker, UITextFieldDelegate, UIPickerViewDataSource, UIPickerViewDelegate, LFTrimMemory> {
     NSMutableDictionary *routine; NSMutableArray *exercises; UITextField *nameField; BOOL isNew;
     UIView *drum; UIPickerView *picker; UILabel *drumTitle; NSInteger pickRow;   // sets × reps wheel for one exercise row
 }

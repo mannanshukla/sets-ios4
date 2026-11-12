@@ -3,7 +3,8 @@
 #import "WBBridge.h"
 
 static NSArray *gExercises = nil; static NSDictionary *gById = nil; static BOOL gStretch = NO;
-static NSArray *gWorkouts = nil;   // parsed history, kept until the next save; the stats below read it many times per screen
+static NSArray *gWorkouts = nil;   // parsed history, kept until the next save or trim; the stats below read it many times per screen
+static NSArray *gSorted = nil;     // gWorkouts oldest first, for the per-exercise progress rows
 
 static BOOL LFCustomValid(id e) {
     if(![e isKindOfClass:[NSDictionary class]])return NO;
@@ -71,7 +72,12 @@ static BOOL LFCustomValid(id e) {
 }
 + (BOOL)saveRoutines:(NSArray *)r { return [[ORJSON stringify:r] writeToFile:[[self docs] stringByAppendingPathComponent:@"routines.json"] atomically:YES encoding:NSUTF8StringEncoding error:NULL]; }
 + (NSArray *)workouts { if (!gWorkouts) gWorkouts = [([self readJSON:@"workouts.json"] ?: [NSArray array]) retain]; return gWorkouts; }
-+ (void)saveWorkouts:(NSArray *)w { [self writeJSON:w name:@"workouts.json"]; [gWorkouts release]; gWorkouts = nil; }
++ (void)saveWorkouts:(NSArray *)w { [self writeJSON:w name:@"workouts.json"]; [gWorkouts release]; gWorkouts = nil; [gSorted release]; gSorted = nil; }
++ (void)trimCachesKeepingCatalog:(BOOL)catalog history:(BOOL)history {
+    [gSorted release]; gSorted = nil;
+    if (!history) { [gWorkouts release]; gWorkouts = nil; }
+    if (!catalog) { [gExercises release]; gExercises = nil; [gById release]; gById = nil; }   // about 2 MB parsed; read again from the bundle on next use
+}
 + (NSDictionary *)activeWorkout { id a = [self readJSON:@"active.json"]; return [a isKindOfClass:[NSDictionary class]] ? a : nil; }
 + (void)saveActiveWorkout:(NSDictionary *)w {
     NSString *p = [[self docs] stringByAppendingPathComponent:@"active.json"];
@@ -127,10 +133,12 @@ static BOOL LFCustomValid(id e) {
     if([[ORJSON stringify:a] writeToFile:[[self docs] stringByAppendingPathComponent:@"bodyweight.json"] atomically:YES encoding:NSUTF8StringEncoding error:NULL])[self publishWeightsForMeals];
 }
 + (void)deleteBodyWeightAt:(NSUInteger)i { if(![self freezeBodyWeightUnits])return;NSMutableArray *a=[NSMutableArray arrayWithArray:[self bodyWeights]];if(i<[a count]) { [a removeObjectAtIndex:i];if([[ORJSON stringify:a] writeToFile:[[self docs] stringByAppendingPathComponent:@"bodyweight.json"] atomically:YES encoding:NSUTF8StringEncoding error:NULL])[self publishWeightsForMeals]; } }
-+ (NSArray *)sortedWorkouts {
++ (NSArray *)sortedWorkouts {   // Progress asks once per visible exercise row; sort the history once, not per row
+    if (gSorted && gWorkouts) return gSorted;
     NSMutableArray *w = [NSMutableArray arrayWithArray:[self workouts]];
     [w sortUsingComparator:^NSComparisonResult(id x, id y) { double p = [[x objectForKey:@"start"] doubleValue], q = [[y objectForKey:@"start"] doubleValue]; return p < q ? NSOrderedAscending : p > q ? NSOrderedDescending : NSOrderedSame; }];
-    return w;
+    [gSorted release]; gSorted = [w copy];
+    return gSorted;
 }
 + (NSArray *)exerciseProgress:(NSString *)eid {
     NSMutableArray *out = [NSMutableArray array];

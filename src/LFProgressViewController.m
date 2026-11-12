@@ -12,11 +12,15 @@ static NSString *fmtNum(double v) {
     if (fabs(v) >= 10000) return [NSString stringWithFormat:@"%.1fk", v / 1000];
     return v == floor(v) ? [NSString stringWithFormat:@"%.0f", v] : [NSString stringWithFormat:@"%.1f", v];
 }
+// Formatters are slow to make on an A4 and these run for every row and every chart redraw. One of each is kept while the
+// app is in front and released by trimFormatters (background and memory warnings), so locale changes are picked up on return.
+static NSNumberFormatter *groupedFormat = nil; static NSDateFormatter *dayFormat = nil, *weekdayFormat = nil;
+static void trimFormatters(void) { [groupedFormat release]; groupedFormat = nil; [dayFormat release]; dayFormat = nil; [weekdayFormat release]; weekdayFormat = nil; }
 static NSString *fmtGrouped(double v) {   // 12,400
-    NSNumberFormatter *f = [[[NSNumberFormatter alloc] init] autorelease]; [f setNumberStyle:NSNumberFormatterDecimalStyle]; [f setMaximumFractionDigits:0];
-    return [f stringFromNumber:[NSNumber numberWithDouble:v]];
+    if (!groupedFormat) { groupedFormat = [[NSNumberFormatter alloc] init]; [groupedFormat setNumberStyle:NSNumberFormatterDecimalStyle]; [groupedFormat setMaximumFractionDigits:0]; }
+    return [groupedFormat stringFromNumber:[NSNumber numberWithDouble:v]];
 }
-static NSString *fmtDay(double t) { NSDateFormatter *f = [[[NSDateFormatter alloc] init] autorelease]; [f setDateFormat:@"MMM d"]; return [f stringFromDate:[NSDate dateWithTimeIntervalSince1970:t]]; }
+static NSString *fmtDay(double t) { if (!dayFormat) { dayFormat = [[NSDateFormatter alloc] init]; [dayFormat setDateFormat:@"MMM d"]; } return [dayFormat stringFromDate:[NSDate dateWithTimeIntervalSince1970:t]]; }
 static NSString *fmtSigned(double d) { return d == 0 ? @"±0" : [NSString stringWithFormat:@"%@%@", d > 0 ? @"+" : @"−", fmtNum(fabs(d))]; }
 
 #define CHART_H 170
@@ -144,6 +148,9 @@ static UITableViewCell *valueCell(UITableView *tv, NSString *t, NSString *d) {
 @implementation LFProgressViewController
 - (id)init { if ((self = [super initWithStyle:UITableViewStyleGrouped])) { self.title = @"Progress"; self.tabBarItem.title = @"Progress"; } return self; }
 - (void)dealloc { [weights release]; [weekly release]; [exerciseIds release]; [weightChart release]; [volumeChart release]; [super dealloc]; }
+// Each chart's drawing is about 0.8 MB at 2x. viewWillAppear makes and draws them again.
+- (void)viewDidUnload { [weightChart release]; weightChart = nil; [volumeChart release]; volumeChart = nil; [super viewDidUnload]; }
+- (void)trimMemory { trimFormatters(); if (LFViewIsVisible(self)) return; weightChart.layer.contents = nil; volumeChart.layer.contents = nil; [weightChart setNeedsDisplay]; [volumeChart setNeedsDisplay]; }
 - (void)viewWillAppear:(BOOL)a {
     [super viewWillAppear:a];
     [weights release]; weights = [[LFStore bodyWeights] retain];
@@ -157,7 +164,7 @@ static UITableViewCell *valueCell(UITableView *tv, NSString *t, NSString *d) {
     for (NSDictionary *e in weekly) { [xs addObject:[e objectForKey:@"t"]]; [ys addObject:[e objectForKey:@"volume"]]; }
     if (!volumeChart) volumeChart = [[LFChartView alloc] initWithFrame:CGRectMake(0, 0, 300, CHART_H)];
     [volumeChart setXs:xs ys:ys bars:YES unit:unitS()];
-    [self.tableView reloadData];
+    [self.tableView reloadData]; LFRestoreScroll(self);
 }
 - (void)viewDidAppear:(BOOL)a {
     [super viewDidAppear:a];
@@ -222,9 +229,12 @@ static int bwRows(void) { return [LFStore useKg] ? 501 : 1001; }   // 0..250 kg 
 
 @implementation LFBodyWeightViewController
 - (id)init { if ((self = [super initWithStyle:UITableViewStylePlain])) { self.title = @"Body Weight"; self.navigationItem.rightBarButtonItem = [[[UIBarButtonItem alloc] initWithTitle:@"Log" style:UIBarButtonItemStyleDone target:self action:@selector(openDrum)] autorelease]; } return self; }
-- (void)dealloc { [entries release]; [drum release]; [picker release]; [super dealloc]; }
+// The wheel is added to the tab bar's view, which outlives this screen; take it out so it does not stay behind pointing here.
+- (void)tearDownDrum { picker.delegate = nil; picker.dataSource = nil; [drum removeFromSuperview]; [drum release]; drum = nil; [picker release]; picker = nil; }
+- (void)dealloc { [self tearDownDrum]; [entries release]; [super dealloc]; }
+- (void)trimMemory { if (drum && (!drum.superview || drum.frame.origin.y >= drum.superview.bounds.size.height - 1)) [self tearDownDrum]; }
 - (void)reload { [entries release]; entries = [[[[LFStore bodyWeights] reverseObjectEnumerator] allObjects] retain]; [self.tableView reloadData]; }
-- (void)viewWillAppear:(BOOL)a { [super viewWillAppear:a]; [self reload]; }
+- (void)viewWillAppear:(BOOL)a { [super viewWillAppear:a]; [self reload]; LFRestoreScroll(self); }
 - (void)viewDidAppear:(BOOL)a {
     [super viewDidAppear:a];
     NSUserDefaults *d = [NSUserDefaults standardUserDefaults];
@@ -237,8 +247,8 @@ static int bwRows(void) { return [LFStore useKg] ? 501 : 1001; }   // 0..250 kg 
     UITableViewCell *c = [tv dequeueReusableCellWithIdentifier:@"bw"];
     if (!c) { c = [[[UITableViewCell alloc] initWithStyle:UITableViewCellStyleValue1 reuseIdentifier:@"bw"] autorelease]; c.selectionStyle = UITableViewCellSelectionStyleNone; c.detailTextLabel.textColor = [UIColor blackColor]; c.detailTextLabel.font = [UIFont boldSystemFontOfSize:17]; }
     NSDictionary *e = [entries objectAtIndex:ip.row];
-    NSDateFormatter *f = [[[NSDateFormatter alloc] init] autorelease]; [f setDateFormat:@"EEEE, MMM d"];
-    c.textLabel.text = [f stringFromDate:[NSDate dateWithTimeIntervalSince1970:[[e objectForKey:@"t"] doubleValue]]];
+    if (!weekdayFormat) { weekdayFormat = [[NSDateFormatter alloc] init]; [weekdayFormat setDateFormat:@"EEEE, MMM d"]; }
+    c.textLabel.text = [weekdayFormat stringFromDate:[NSDate dateWithTimeIntervalSince1970:[[e objectForKey:@"t"] doubleValue]]];
     double w = [[e objectForKey:@"w"] doubleValue], prev = ip.row + 1 < (NSInteger)[entries count] ? [[[entries objectAtIndex:ip.row + 1] objectForKey:@"w"] doubleValue] : w;
     c.detailTextLabel.text = [NSString stringWithFormat:@"%@ %@", fmtNum(w), unitS()];
     c.textLabel.font = [UIFont systemFontOfSize:15];
@@ -295,16 +305,19 @@ static int bwRows(void) { return [LFStore useKg] ? 501 : 1001; }   // 0..250 kg 
 @implementation LFExerciseProgressViewController
 - (id)initWithExercise:(NSString *)e { if ((self = [super initWithStyle:UITableViewStyleGrouped])) { eid = [e copy]; LFFitTitle(self, [[LFStore exercise:e] objectForKey:@"name"]); } return self; }
 - (void)dealloc { [eid release]; [sessions release]; [mode release]; [chart release]; [super dealloc]; }
+// Reloading the view keeps the chosen measure; the chart is made and drawn again in viewWillAppear.
+- (void)viewDidUnload { modeIndex = mode.selectedSegmentIndex; [mode release]; mode = nil; [chart release]; chart = nil; [super viewDidUnload]; }
+- (void)trimMemory { trimFormatters(); if (LFViewIsVisible(self)) return; chart.layer.contents = nil; [chart setNeedsDisplay]; }
 - (void)viewDidLoad {
     [super viewDidLoad];
-    mode = [[UISegmentedControl alloc] initWithItems:[NSArray arrayWithObjects:@"Est. 1RM", @"Top Weight", @"Volume", nil]];
-    mode.segmentedControlStyle = UISegmentedControlStyleBar; mode.selectedSegmentIndex = 0; mode.tintColor = [UIColor colorWithWhite:0.35 alpha:1];
+    [mode release]; mode = [[UISegmentedControl alloc] initWithItems:[NSArray arrayWithObjects:@"Est. 1RM", @"Top Weight", @"Volume", nil]];
+    mode.segmentedControlStyle = UISegmentedControlStyleBar; mode.selectedSegmentIndex = MAX(0, modeIndex); mode.tintColor = [UIColor colorWithWhite:0.35 alpha:1];
     [mode addTarget:self action:@selector(refresh) forControlEvents:UIControlEventValueChanged];
     UIView *hdr = [[[UIView alloc] initWithFrame:CGRectMake(0, 0, 320, 44)] autorelease];
     mode.frame = CGRectMake(10, 10, 300, 30); mode.autoresizingMask = UIViewAutoresizingFlexibleWidth; [hdr addSubview:mode];
     self.tableView.tableHeaderView = hdr;
 }
-- (void)viewWillAppear:(BOOL)a { [super viewWillAppear:a]; [sessions release]; sessions = [[LFStore exerciseProgress:eid] retain]; [self refresh]; }
+- (void)viewWillAppear:(BOOL)a { [super viewWillAppear:a]; [sessions release]; sessions = [[LFStore exerciseProgress:eid] retain]; [self refresh]; LFRestoreScroll(self); }
 - (NSString *)key { NSArray *k = [NSArray arrayWithObjects:@"e1rm", @"weight", @"volume", nil]; return [k objectAtIndex:MAX(0, mode.selectedSegmentIndex)]; }
 - (void)refresh {
     NSMutableArray *xs = [NSMutableArray array], *ys = [NSMutableArray array];

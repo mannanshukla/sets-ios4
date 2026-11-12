@@ -31,4 +31,5 @@
 + (NSArray *)exerciseIdsInHistory;                  // most-trained first
 + (NSArray *)weeklyVolume:(int)weeks;               // oldest first: {t (week start), volume, count}
 + (NSInteger)weekStreak;                            // consecutive weeks with a workout, counting this or last week
++ (void)trimCachesKeepingCatalog:(BOOL)catalog history:(BOOL)history;   // drop parsed files; NO for one a visible screen still holds, so it is not parsed twice
 @end

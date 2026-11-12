@@ -1,6 +1,7 @@
 #import "JRMaterials.h"
 #import "LFSkin.h"
 #import <QuartzCore/QuartzCore.h>
+#import <objc/runtime.h>
 #define RULE_H 44
 static UIColor *paperColor(void) {
 return JRPaper();
@@ -18,9 +19,10 @@ void LFSkinNavBar(UINavigationBar *bar) {
 // One rendered sheet per row size, shared by every row, header and background of that size. Views that implement
 // drawRect: each get their own bitmap (a 320x44 row is 220 KB at 2x), and the Workout tab rebuilds its rows on every tap;
 // with a handful of shared images the paper costs nothing per cell.
+static NSMutableDictionary *paperCache = nil;
 static UIImage *paperImage(CGSize sz, BOOL selected) {
     if (sz.width < 1 || sz.height < 1) return nil;
-    static NSMutableDictionary *cache = nil; if (!cache) cache = [[NSMutableDictionary alloc] init];
+    NSMutableDictionary *cache = paperCache; if (!cache) cache = paperCache = [[NSMutableDictionary alloc] init];
     NSString *k = [NSString stringWithFormat:@"%gx%g%@", sz.width, sz.height, selected ? @"s" : @""];
     UIImage *img = [cache objectForKey:k]; if (img) return img;
     UIGraphicsBeginImageContextWithOptions(sz, YES, 0); CGContextRef c = UIGraphicsGetCurrentContext();
@@ -81,4 +83,23 @@ void LFFitTitle(UIViewController *vc, NSString *title) {
     if ([title sizeWithFont:[UIFont boldSystemFontOfSize:16]].width > 176) { l.frame = CGRectMake(0, 0, 176, 44); l.font = [UIFont boldSystemFontOfSize:14]; l.numberOfLines = 2; l.lineBreakMode = UILineBreakModeWordWrap; l.adjustsFontSizeToFitWidth = NO; }   // long exercise names wrap onto two lines
     l.textColor = [UIColor whiteColor]; l.shadowColor = [UIColor colorWithWhite:0 alpha:0.5]; l.shadowOffset = CGSizeMake(0, -1);
     vc.navigationItem.titleView = l;
+}
+
+// Layers that show a sheet retain its CGImage, so emptying the cache only frees sheets nothing on screen is using.
+void LFSkinPurgeCache(void) { [paperCache removeAllObjects]; }
+BOOL LFViewIsVisible(UIViewController *vc) { return [vc isViewLoaded] && vc.view.window != nil; }
+static char savedOffsetKey;
+void LFUnloadHiddenView(UIViewController *vc) {
+    if (![vc isViewLoaded] || vc.view.window) return;
+    if ([vc.view isKindOfClass:[UIScrollView class]]) objc_setAssociatedObject(vc, &savedOffsetKey, [NSValue valueWithCGPoint:[(UIScrollView *)vc.view contentOffset]], OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+    [vc didReceiveMemoryWarning];   // UIKit's own path: releases an off-screen view and calls viewDidUnload
+}
+void LFRestoreScroll(UIViewController *vc) {
+    NSValue *v = objc_getAssociatedObject(vc, &savedOffsetKey); if (!v) return;
+    CGPoint p = [v CGPointValue];   // read before clearing: the getter does not autorelease, so clearing frees v
+    objc_setAssociatedObject(vc, &savedOffsetKey, nil, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+    if (![vc.view isKindOfClass:[UIScrollView class]]) return;
+    UIScrollView *sv = (UIScrollView *)vc.view;
+    CGFloat maxY = MAX(-sv.contentInset.top, sv.contentSize.height + sv.contentInset.bottom - sv.bounds.size.height);
+    sv.contentOffset = CGPointMake(p.x, MIN(p.y, maxY));
 }

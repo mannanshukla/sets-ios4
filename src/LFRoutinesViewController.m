@@ -13,7 +13,7 @@
     self.navigationItem.rightBarButtonItem = [[[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemAdd target:self action:@selector(add)] autorelease];
 }
 - (void)viewWillAppear:(BOOL)a { [super viewWillAppear:a]; [self reload]; }
-- (void)reload { [routines setArray:[LFStore routines]]; [self.tableView reloadData]; }
+- (void)reload { [routines setArray:[LFStore routines]]; [self.tableView reloadData]; LFRestoreScroll(self); }
 - (void)viewDidAppear:(BOOL)a { [super viewDidAppear:a]; NSUserDefaults *d = [NSUserDefaults standardUserDefaults]; if ([d boolForKey:@"lf_open_routine"] && [routines count]) { [d removeObjectForKey:@"lf_open_routine"]; [d synchronize]; [self tableView:self.tableView didSelectRowAtIndexPath:[NSIndexPath indexPathForRow:0 inSection:0]]; } }
 - (void)add { LFRoutineEditViewController *e = [[LFRoutineEditViewController alloc] initWithRoutine:nil]; [self.navigationController pushViewController:e animated:YES]; [e release]; }
 - (NSInteger)tableView:(UITableView *)tv numberOfRowsInSection:(NSInteger)s { return MAX(1, (NSInteger)[routines count]); }
@@ -55,10 +55,16 @@ static NSArray *repsPresets(void) { static NSArray *r = nil; if (!r) r = [[NSArr
     }
     return self;
 }
-- (void)dealloc { [routine release]; [exercises release]; [nameField release]; [drum release]; [picker release]; [drumTitle release]; [super dealloc]; }
+// The wheel is added to the tab bar's view, which outlives this screen; take it out so it does not stay behind pointing here.
+- (void)tearDownDrum { picker.delegate = nil; picker.dataSource = nil; [drum removeFromSuperview]; [drum release]; drum = nil; [picker release]; picker = nil; [drumTitle release]; drumTitle = nil; }
+- (void)trimMemory { if (drum && drum.frame.origin.y >= drum.superview.bounds.size.height - 1) [self tearDownDrum]; }
+- (void)dealloc { nameField.delegate = nil; [routine release]; [exercises release]; [nameField release]; [self tearDownDrum]; [super dealloc]; }
+// The typed name goes back into the routine, so the field made by the next viewDidLoad shows it.
+- (void)viewDidUnload { if (nameField) [routine setObject:(nameField.text ?: @"") forKey:@"name"]; nameField.delegate = nil; [nameField release]; nameField = nil; [super viewDidUnload]; }
+- (void)viewWillAppear:(BOOL)a { [super viewWillAppear:a]; LFRestoreScroll(self); }
 - (void)viewDidLoad {
     [super viewDidLoad];
-    nameField = [[UITextField alloc] initWithFrame:CGRectMake(0, 0, 260, 30)];
+    [nameField release]; nameField = [[UITextField alloc] initWithFrame:CGRectMake(0, 0, 260, 30)];
     nameField.placeholder = @"Routine name"; nameField.text = [routine objectForKey:@"name"]; nameField.font = [UIFont systemFontOfSize:16]; nameField.delegate = self;
     nameField.returnKeyType = UIReturnKeyDone; nameField.autocapitalizationType = UITextAutocapitalizationTypeWords; nameField.contentVerticalAlignment = UIControlContentVerticalAlignmentCenter;
     self.navigationItem.rightBarButtonItem = self.editButtonItem;
@@ -66,7 +72,7 @@ static NSArray *repsPresets(void) { static NSArray *r = nil; if (!r) r = [[NSArr
 - (void)viewWillDisappear:(BOOL)a { [super viewWillDisappear:a]; [self closeDrum]; [self save]; }
 - (void)viewDidAppear:(BOOL)a { [super viewDidAppear:a]; NSUserDefaults *d = [NSUserDefaults standardUserDefaults]; if ([d boolForKey:@"lf_test_edit"] && [exercises count]) { [d removeObjectForKey:@"lf_test_edit"]; [d synchronize]; UIButton *b = [[[UIButton alloc] init] autorelease]; b.tag = 1; [self performSelector:@selector(openDrum:) withObject:b afterDelay:0.4]; } }
 - (void)save {
-    NSString *n = [nameField.text stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
+    NSString *n = [(nameField ? nameField.text : [routine objectForKey:@"name"]) stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
     if (![n length] && ![exercises count]) return;   // nothing to keep
     [routine setObject:([n length] ? n : @"Routine") forKey:@"name"];
     [routine setObject:exercises forKey:@"exercises"];
@@ -185,7 +191,7 @@ static NSArray *repsPresets(void) { static NSArray *r = nil; if (!r) r = [[NSArr
 - (void)saveInputs { if(goal) { [[NSUserDefaults standardUserDefaults] setObject:[self options] forKey:@"ai_training_goal"];[[NSUserDefaults standardUserDefaults] synchronize]; } }
 - (void)viewWillDisappear:(BOOL)a { [self saveInputs];[request cancel];[notes resignFirstResponder];[super viewWillDisappear:a]; }
 - (void)viewDidUnload { [self saveInputs];[request cancel];[self releaseInputs];[super viewDidUnload]; }
-- (void)viewWillAppear:(BOOL)a { [super viewWillAppear:a];self.title=@"Build a Plan";[self.tableView reloadData]; }
+- (void)viewWillAppear:(BOOL)a { [super viewWillAppear:a];self.title=@"Build a Plan";[self.tableView reloadData];LFRestoreScroll(self); }
 - (UISegmentedControl *)newSegment:(NSArray *)items sel:(NSInteger)i { UISegmentedControl *s = [[UISegmentedControl alloc] initWithItems:items]; s.segmentedControlStyle = UISegmentedControlStyleBar; s.selectedSegmentIndex = i; s.tintColor = [UIColor colorWithRed:0x5B/255.0 green:0x3F/255.0 blue:0xA6/255.0 alpha:1]; return s; }
 - (void)viewDidLoad {
     [super viewDidLoad];
@@ -235,6 +241,7 @@ static NSArray *repsPresets(void) { static NSArray *r = nil; if (!r) r = [[NSArr
 @implementation LFPlanPreviewController
 - (id)initWithRoutines:(NSArray *)r { if((self=[super initWithStyle:UITableViewStyleGrouped])) { proposed=[r copy];chosen=[[NSMutableIndexSet alloc] initWithIndexesInRange:NSMakeRange(0,[r count])];self.title=@"Review Plan";self.navigationItem.rightBarButtonItem=[[[UIBarButtonItem alloc] initWithTitle:@"Add" style:UIBarButtonItemStyleDone target:self action:@selector(add)] autorelease]; }return self; }
 - (void)dealloc { [proposed release];[chosen release];[super dealloc]; }
+- (void)viewWillAppear:(BOOL)a { [super viewWillAppear:a];LFRestoreScroll(self); }
 - (NSInteger)numberOfSectionsInTableView:(UITableView *)t { return [proposed count]; }
 - (NSInteger)tableView:(UITableView *)t numberOfRowsInSection:(NSInteger)s { return 1+[[[proposed objectAtIndex:s] objectForKey:@"exercises"] count]; }
 - (NSString *)tableView:(UITableView *)t titleForFooterInSection:(NSInteger)s { return s==(NSInteger)[proposed count]-1?@"Tap a routine name to leave it out. Add saves the checked routines; your existing routines stay. You can edit every set afterward.":nil; }

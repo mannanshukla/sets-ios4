@@ -3,11 +3,12 @@
 #import "LFStore.h"
 #import "LFAI.h"
 #import "CLPaper.h"
+#import "LFSkin.h"
 #import "CLCoachViewController.h"
 @implementation LFCoachViewController
 - (id)init { if((self=[super initWithStyle:UITableViewStyleGrouped])) { self.title=@"Coach";self.tabBarItem.image=CLCoachIcon(); }return self; }
 - (void)viewDidLoad { [super viewDidLoad];CLPaperTable(self.tableView); }
-- (void)viewWillAppear:(BOOL)a { [super viewWillAppear:a];[self.tableView reloadData]; }
+- (void)viewWillAppear:(BOOL)a { [super viewWillAppear:a];[self.tableView reloadData];LFRestoreScroll(self); }
 - (NSInteger)numberOfSectionsInTableView:(UITableView *)t { return 3; }
 - (NSInteger)tableView:(UITableView *)t numberOfRowsInSection:(NSInteger)s { return s==0?3:s==1?2:1; }
 - (NSString *)tableView:(UITableView *)t titleForHeaderInSection:(NSInteger)s { return s==0?@"This week":s==1?@"Your training":@"Notebook"; }

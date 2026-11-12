@@ -1,13 +1,14 @@
 #import "CLCoachViewController.h"
 #import "CLIntegration.h"
 #import "CLPaper.h"
+#import "LFSkin.h"
 @implementation CLCoachViewController
 @synthesize questionText;
 - (id)initWithSource:(NSString *)s context:(NSString *)c system:(NSString *)p { if((self=[super initWithStyle:UITableViewStyleGrouped])) { source=[s copy];context=[c copy];system=[p copy];self.title=@"Claude";request=[CLAIRequest new];request.delegate=self; }return self; }
 - (void)viewDidLoad { [super viewDidLoad];CLPaperTable(self.tableView);question=[[UITextView alloc] initWithFrame:CGRectZero];question.text=questionText?:@"What is working, and what is one practical next step toward my goal?";question.delegate=self;question.font=[UIFont systemFontOfSize:16];question.backgroundColor=[UIColor clearColor];question.autoresizingMask=UIViewAutoresizingFlexibleWidth; }
 - (void)viewDidUnload { self.questionText=question.text;[request cancel];question.delegate=nil;[question release];question=nil;[super viewDidUnload]; }
 - (void)viewWillDisappear:(BOOL)a { [request cancel];[question resignFirstResponder];[super viewWillDisappear:a]; }
-- (void)viewWillAppear:(BOOL)a { [super viewWillAppear:a];question.editable=!request.running;[self.tableView reloadData]; }
+- (void)viewWillAppear:(BOOL)a { [super viewWillAppear:a];question.editable=!request.running;[self.tableView reloadData];LFRestoreScroll(self); }
 - (void)dealloc { request.delegate=nil;[request cancel];[request release];question.delegate=nil;[question release];[source release];[context release];[system release];[questionText release];[status release];[super dealloc]; }
 - (NSInteger)numberOfSectionsInTableView:(UITableView *)t { return 3; }
 - (NSInteger)tableView:(UITableView *)t numberOfRowsInSection:(NSInteger)s { return s==2?2:1; }
